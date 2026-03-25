@@ -279,6 +279,7 @@
         max-height: min(78vh, calc(var(--viewport-height) - 12px));
         transform: translateY(calc(100% - 78px));
         transition: transform 220ms ease;
+        will-change: transform;
         overflow: hidden;
       }
       .sidebar.is-open {
@@ -873,6 +874,11 @@
     const ZOOM_SCROLL_GAIN = 0.0090;
     let mobileLayoutEnabled = false;
     let mobileDrawerOpen = false;
+    let mobileDrawerSection = 'controls';
+    let mobileDrawerDragStartY = 0;
+    let mobileDrawerDragOffset = 0;
+    let mobileDrawerDragging = false;
+    let suppressSidebarToggleClick = false;
 
     function isMobileLayout() {
       return window.matchMedia('(max-width: 960px)').matches;
@@ -881,6 +887,24 @@
     function updateMobileButtons(activeSection) {
       mobileDrawerBtn.classList.toggle('is-active', mobileLayoutEnabled && mobileDrawerOpen && activeSection !== 'selection');
       mobileSelectionBtn.classList.toggle('is-active', mobileLayoutEnabled && mobileDrawerOpen && activeSection === 'selection');
+    }
+
+    function clearMobileDrawerDrag() {
+      mobileDrawerDragStartY = 0;
+      mobileDrawerDragOffset = 0;
+      mobileDrawerDragging = false;
+      sidebarEl.style.removeProperty('transform');
+      sidebarEl.style.removeProperty('transition');
+    }
+
+    function applyMobileDrawerDrag(offset) {
+      if (!mobileLayoutEnabled || !mobileDrawerOpen) {
+        return;
+      }
+      const clampedOffset = Math.max(0, Math.min(offset, 220));
+      mobileDrawerDragOffset = clampedOffset;
+      sidebarEl.style.transition = 'none';
+      sidebarEl.style.transform = 'translateY(' + clampedOffset + 'px)';
     }
 
     function ensureSelectionPanelPlacement() {
@@ -907,19 +931,21 @@
       }
 
       mobileDrawerOpen = shouldOpen;
+      mobileDrawerSection = section || mobileDrawerSection || 'controls';
+      clearMobileDrawerDrag();
       sidebarEl.classList.toggle('is-open', shouldOpen);
       sidebarToggleEl.setAttribute('aria-expanded', shouldOpen ? 'true' : 'false');
       sidebarHandleStatusEl.textContent = shouldOpen
-        ? 'Tap again to close. Scroll inside for search, focus, references, and selection.'
+        ? 'Drag down or tap again to close. Scroll inside for search, focus, references, and selection.'
         : 'Tap to open the iPhone drawer.';
-      updateMobileButtons(section || 'controls');
+      updateMobileButtons(mobileDrawerSection);
 
       if (!shouldOpen) {
         return;
       }
 
       requestAnimationFrame(() => {
-        if (section === 'selection') {
+        if (mobileDrawerSection === 'selection') {
           selectionPanelEl.scrollIntoView({ block: 'start', behavior: 'smooth' });
         } else {
           sidebarDrawerBodyEl.scrollTo({ top: 0, behavior: 'smooth' });
@@ -938,6 +964,67 @@
         return;
       }
       setMobileDrawerOpen(true, requestedSection);
+    }
+
+    function drawerTouchY(event) {
+      if (event.touches && event.touches.length) {
+        return event.touches[0].clientY;
+      }
+      if (event.changedTouches && event.changedTouches.length) {
+        return event.changedTouches[0].clientY;
+      }
+      return null;
+    }
+
+    function handleMobileDrawerTouchStart(event) {
+      if (!mobileLayoutEnabled || !mobileDrawerOpen) {
+        return;
+      }
+      const touchY = drawerTouchY(event);
+      if (touchY == null) {
+        return;
+      }
+      mobileDrawerDragStartY = touchY;
+      mobileDrawerDragOffset = 0;
+      mobileDrawerDragging = true;
+      suppressSidebarToggleClick = false;
+    }
+
+    function handleMobileDrawerTouchMove(event) {
+      if (!mobileDrawerDragging || !mobileLayoutEnabled || !mobileDrawerOpen) {
+        return;
+      }
+      const touchY = drawerTouchY(event);
+      if (touchY == null) {
+        return;
+      }
+      const deltaY = Math.max(0, touchY - mobileDrawerDragStartY);
+      if (deltaY > 6) {
+        suppressSidebarToggleClick = true;
+      }
+      if (deltaY <= 0) {
+        return;
+      }
+      event.preventDefault();
+      applyMobileDrawerDrag(deltaY);
+    }
+
+    function handleMobileDrawerTouchEnd() {
+      if (!mobileDrawerDragging) {
+        return;
+      }
+      const shouldClose = mobileDrawerDragOffset > 72;
+      if (shouldClose) {
+        setMobileDrawerOpen(false, mobileDrawerSection);
+      } else {
+        clearMobileDrawerDrag();
+      }
+      mobileDrawerDragging = false;
+      mobileDrawerDragStartY = 0;
+      mobileDrawerDragOffset = 0;
+      setTimeout(() => {
+        suppressSidebarToggleClick = false;
+      }, 0);
     }
 
     function syncResponsiveChrome() {
@@ -1847,7 +1934,18 @@
       cy.elements().unselect();
       applyCompoundLayout(currentLayoutName, false);
     });
-    sidebarToggleEl.addEventListener('click', () => toggleMobileDrawer('controls'));
+    sidebarToggleEl.addEventListener('click', (event) => {
+      if (suppressSidebarToggleClick) {
+        event.preventDefault();
+        suppressSidebarToggleClick = false;
+        return;
+      }
+      toggleMobileDrawer('controls');
+    });
+    sidebarToggleEl.addEventListener('touchstart', handleMobileDrawerTouchStart, { passive: true });
+    sidebarToggleEl.addEventListener('touchmove', handleMobileDrawerTouchMove, { passive: false });
+    sidebarToggleEl.addEventListener('touchend', handleMobileDrawerTouchEnd, { passive: true });
+    sidebarToggleEl.addEventListener('touchcancel', handleMobileDrawerTouchEnd, { passive: true });
     mobileDrawerBtn.addEventListener('click', () => toggleMobileDrawer('controls'));
     mobileSelectionBtn.addEventListener('click', () => toggleMobileDrawer('selection'));
     mobileFitBtn.addEventListener('click', () => fitGraph(64));
