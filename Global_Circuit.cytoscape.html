@@ -254,6 +254,213 @@
       border-color: #7c3aed;
       background: #ede9fe;
     }
+    .detail-tabs {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+    .detail-tab {
+      border-radius: 999px;
+      padding: 6px 12px;
+      border: 1px solid #d6d3d1;
+      background: #fffdf8;
+      color: var(--ink);
+    }
+    .detail-tab.is-active {
+      background: #0f766e;
+      border-color: #0f766e;
+      color: #fffdf8;
+    }
+    .selection-summary {
+      display: grid;
+      gap: 8px;
+      margin-top: 12px;
+      margin-bottom: 16px;
+    }
+    .selection-counts {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .edge-section {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+    .edge-section-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+    }
+    .edge-card-list {
+      display: grid;
+      gap: 10px;
+    }
+    .edge-card {
+      display: grid;
+      gap: 10px;
+      padding: 12px 13px;
+      border-radius: 16px;
+      border: 1px solid rgba(214, 211, 209, 0.95);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+      cursor: pointer;
+    }
+    .edge-card:hover {
+      border-color: #8a8176;
+    }
+    .edge-card.is-selected {
+      border-color: #0f766e;
+      box-shadow: 0 12px 28px rgba(15, 118, 110, 0.14);
+      background: rgba(240, 253, 250, 0.95);
+    }
+    .edge-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+    .edge-arrow {
+      color: var(--muted);
+      font-weight: 700;
+    }
+    .edge-node-chip {
+      border-radius: 999px;
+      border: 1px solid #d6d3d1;
+      background: #fffdf8;
+      padding: 5px 10px;
+      line-height: 1.25;
+      color: var(--ink);
+    }
+    .edge-node-chip.type-region {
+      border-color: #1d4ed8;
+      background: #dbeafe;
+    }
+    .edge-node-chip.type-celltype {
+      border-color: #dc2626;
+      background: #fee2e2;
+    }
+    .edge-node-chip.type-behavior {
+      border-color: #d97706;
+      background: #fef3c7;
+    }
+    .edge-node-chip.type-state {
+      border-color: #16a34a;
+      background: #dcfce7;
+    }
+    .edge-node-chip.type-other {
+      border-color: #7c3aed;
+      background: #ede9fe;
+    }
+    .edge-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+    }
+    .edge-badge {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 4px 9px;
+      background: #f5f2ea;
+      border: 1px solid #d6d3d1;
+      color: #374151;
+      line-height: 1.2;
+      font-size: 0.82rem;
+    }
+    .edge-badge.edge-anatomical_exc {
+      border-color: #dc2626;
+      color: #991b1b;
+      background: #fee2e2;
+    }
+    .edge-badge.edge-anatomical_inh {
+      border-color: #2563eb;
+      color: #1d4ed8;
+      background: #dbeafe;
+    }
+    .edge-badge.edge-anatomical_unknown {
+      border-color: #475569;
+      color: #334155;
+      background: #e2e8f0;
+    }
+    .edge-badge.edge-behavior {
+      border-color: #d97706;
+      color: #b45309;
+      background: #fef3c7;
+    }
+    .edge-badge.edge-molecular {
+      border-color: #16a34a;
+      color: #166534;
+      background: #dcfce7;
+    }
+    .edge-badge.edge-correlation {
+      border-color: #6b7280;
+      color: #4b5563;
+      background: #f3f4f6;
+    }
+    .edge-badge.edge-modulatory {
+      border-color: #7c3aed;
+      color: #6d28d9;
+      background: #ede9fe;
+    }
+    .edge-reference-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .edge-reference-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      flex-wrap: wrap;
+    }
+    .edge-reference-chip {
+      display: inline-flex;
+      align-items: center;
+      border-radius: 999px;
+      padding: 5px 10px;
+      border: 1px solid #d6d3d1;
+      background: #fffdf8;
+      color: var(--ink);
+      text-decoration: none;
+      line-height: 1.25;
+    }
+    .edge-reference-chip:hover {
+      border-color: #0f766e;
+    }
+    .edge-reference-map {
+      border-radius: 999px;
+      padding: 2px 7px;
+      background: #e6fffb;
+      color: #0f766e;
+      font-size: 0.76rem;
+      border: 1px solid rgba(15, 118, 110, 0.18);
+    }
+    .detail-focus-note {
+      margin-top: 12px;
+    }
+    .reference-summary-list {
+      display: grid;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .reference-summary-row {
+      display: grid;
+      gap: 8px;
+      padding: 12px 13px;
+      border-radius: 16px;
+      border: 1px solid rgba(214, 211, 209, 0.95);
+      background: rgba(255, 255, 255, 0.82);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.05);
+    }
+    .reference-summary-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
     a { color: #0f766e; }
     @media (max-width: 960px) {
       body {
@@ -560,6 +767,156 @@
       return { seed, incoming, outgoing };
     }
 
+    function edgeTerminalNode(edge, terminal) {
+      return terminal === 'source' ? edge.source() : edge.target();
+    }
+
+    function edgeTerminalLabel(edge, terminal) {
+      const node = edgeTerminalNode(edge, terminal);
+      return String(node.data('label') || node.id());
+    }
+
+    function edgeTerminalType(edge, terminal) {
+      const node = edgeTerminalNode(edge, terminal);
+      return String(node.data('type') || 'other');
+    }
+
+    function sortEdgesForDisplay(edges, direction) {
+      return [...edges].sort((left, right) => {
+        const leftPrimary = direction === 'incoming' ? edgeTerminalLabel(left, 'source') : edgeTerminalLabel(left, 'target');
+        const rightPrimary = direction === 'incoming' ? edgeTerminalLabel(right, 'source') : edgeTerminalLabel(right, 'target');
+        return leftPrimary.localeCompare(rightPrimary)
+          || String(left.data('relation') || '').localeCompare(String(right.data('relation') || ''))
+          || String(left.id()).localeCompare(String(right.id()));
+      });
+    }
+
+    function directEdgeSummary(node) {
+      const seed = focusSeedNode(node);
+      return {
+        seed,
+        incomingEdges: sortEdgesForDisplay(seed.incomers('edge').toArray(), 'incoming'),
+        outgoingEdges: sortEdgesForDisplay(seed.outgoers('edge').toArray(), 'outgoing')
+      };
+    }
+
+    function normalizeNodeType(type) {
+      return NODE_TYPE_META[type] ? type : 'other';
+    }
+
+    function detailTabButton(tab, label, activeTab) {
+      const activeClass = activeTab === tab ? 'detail-tab is-active' : 'detail-tab';
+      return '<button type="button" class="' + activeClass + '" data-detail-tab="' + escapeHtml(tab) + '">' + escapeHtml(label) + '</button>';
+    }
+
+    function renderDetailTabs(activeTab) {
+      return (
+        '<div class="detail-tabs">' +
+        detailTabButton('edges', 'Edges', activeTab) +
+        detailTabButton('nodes', 'Nodes', activeTab) +
+        detailTabButton('references', 'References', activeTab) +
+        '</div>'
+      );
+    }
+
+    function renderNodeJumpChip(node, role) {
+      const type = normalizeNodeType(String(node.data('type') || 'other'));
+      const meta = nodeTypeMeta(type);
+      const title = role ? (role + ' · ' + meta.label) : meta.label;
+      return '<button type="button" class="edge-node-chip ' + escapeHtml(meta.css) + '" data-node-id="' + escapeHtml(node.id()) + '" title="' + escapeHtml(title) + '">' + escapeHtml(node.data('label') || node.id()) + '</button>';
+    }
+
+    function edgeCategoryBadge(category) {
+      return '<span class="edge-badge edge-' + escapeHtml(category || 'modulatory') + '">' + escapeHtml(category || 'unknown') + '</span>';
+    }
+
+    function edgePlainBadge(label) {
+      if (!label) {
+        return '';
+      }
+      return '<span class="edge-badge">' + escapeHtml(label) + '</span>';
+    }
+
+    function renderEdgeReferenceChips(entries) {
+      if (!entries || !entries.length) {
+        return '<div class="muted">No linked papers.</div>';
+      }
+      return '<div class="edge-reference-list">' + entries.map((entry) => {
+        const label = escapeHtml(entry.ref_id + ' · ' + entry.label);
+        return (
+          '<span class="edge-reference-item">' +
+          (entry.url
+            ? '<a class="edge-reference-chip" data-role="edge-ref-link" href="' + escapeHtml(entry.url) + '" target="_blank" rel="noreferrer">' + label + '</a>'
+            : '<span class="edge-reference-chip">' + label + '</span>') +
+          '<button type="button" class="edge-reference-map" data-ref-id="' + escapeHtml(entry.ref_id) + '">Map</button>' +
+          '</span>'
+        );
+      }).join('') + '</div>';
+    }
+
+    function renderEdgeCard(edge, direction, selectedEdgeId) {
+      const data = edge.data();
+      const selectedClass = selectedEdgeId === edge.id() ? 'edge-card is-selected' : 'edge-card';
+      const sourceNode = edge.source();
+      const targetNode = edge.target();
+      const figureBadge = data.figure_refs ? edgePlainBadge(data.figure_refs) : '';
+      const relationBadge = data.relation ? edgePlainBadge(data.relation) : '';
+      const signBadge = data.sign ? edgePlainBadge(data.sign) : '';
+      const evidenceBadge = data.evidence ? edgePlainBadge(data.evidence) : '';
+      return (
+        '<div class="' + selectedClass + '" data-edge-id="' + escapeHtml(edge.id()) + '">' +
+        '<div class="edge-title">' +
+        renderNodeJumpChip(sourceNode, 'source') +
+        '<span class="edge-arrow">→</span>' +
+        renderNodeJumpChip(targetNode, 'target') +
+        '</div>' +
+        '<div class="edge-meta">' +
+        edgeCategoryBadge(data.category) +
+        relationBadge +
+        signBadge +
+        evidenceBadge +
+        figureBadge +
+        edgePlainBadge((data.paper_entries || []).length + ' paper' + ((data.paper_entries || []).length === 1 ? '' : 's')) +
+        '</div>' +
+        renderEdgeReferenceChips(data.paper_entries || []) +
+        '</div>'
+      );
+    }
+
+    function renderEdgeSection(title, edges, direction, selectedEdgeId) {
+      if (!edges.length) {
+        return (
+          '<div class="edge-section">' +
+          '<div class="edge-section-header"><strong>' + escapeHtml(title) + '</strong><span class="neighbor-count">0</span></div>' +
+          '<div class="muted">None</div>' +
+          '</div>'
+        );
+      }
+      return (
+        '<div class="edge-section">' +
+        '<div class="edge-section-header"><strong>' + escapeHtml(title) + '</strong><span class="neighbor-count">' + escapeHtml(edges.length) + '</span></div>' +
+        '<div class="edge-card-list">' + edges.map((edge) => renderEdgeCard(edge, direction, selectedEdgeId)).join('') + '</div>' +
+        '</div>'
+      );
+    }
+
+    function uniqueReferenceSummary(edges) {
+      const refs = new Map();
+      edges.forEach((edge) => {
+        (edge.data('paper_entries') || []).forEach((entry) => {
+          const existing = refs.get(entry.ref_id) || { ...entry, count: 0, edgeIds: new Set() };
+          if (!existing.edgeIds.has(edge.id())) {
+            existing.edgeIds.add(edge.id());
+            existing.count += 1;
+          }
+          refs.set(entry.ref_id, existing);
+        });
+      });
+      return Array.from(refs.values())
+        .sort((left, right) => left.ref_id.localeCompare(right.ref_id) || left.label.localeCompare(right.label))
+        .map((entry) => ({ ...entry, edgeIds: Array.from(entry.edgeIds) }));
+    }
+
     function renderNeighborChips(nodes, direction) {
       if (!nodes.length) {
         return '<div class="muted">None</div>';
@@ -593,41 +950,110 @@
       }).join('');
     }
 
+    function renderReferenceSummary(entries) {
+      if (!entries.length) {
+        return '<div class="muted">No linked references for these direct edges.</div>';
+      }
+      return (
+        '<div class="reference-summary-list">' +
+        entries.map((entry) => {
+          const linkedLabel = entry.count + ' edge' + (entry.count === 1 ? '' : 's');
+          const link = entry.url
+            ? '<a href="' + escapeHtml(entry.url) + '" target="_blank" rel="noreferrer">' + escapeHtml(entry.ref_id + ' · ' + entry.label) + '</a>'
+            : '<span>' + escapeHtml(entry.ref_id + ' · ' + entry.label) + '</span>';
+          return (
+            '<div class="reference-summary-row">' +
+            link +
+            '<div class="reference-summary-meta">' +
+            edgePlainBadge(linkedLabel) +
+            '<button type="button" class="edge-reference-map" data-ref-id="' + escapeHtml(entry.ref_id) + '">Show map</button>' +
+            '</div>' +
+            '</div>'
+          );
+        }).join('') +
+        '</div>'
+      );
+    }
+
+    function renderSelectedEdgeSummary(edge) {
+      if (!edge || !edge.length) {
+        return '';
+      }
+      const data = edge.data();
+      return (
+        '<div class="selection-summary">' +
+        '<strong>Selected edge</strong>' +
+        '<div class="selection-counts">' +
+        edgeCategoryBadge(data.category) +
+        edgePlainBadge(data.relation || 'unknown') +
+        edgePlainBadge(data.sign || 'unknown sign') +
+        edgePlainBadge(data.figure_refs || 'no figure') +
+        '</div>' +
+        '</div>'
+      );
+    }
+
     function renderNodeDetails(node) {
       const data = node.data();
       const summary = directNeighborSummary(node);
+      const edgeSummary = directEdgeSummary(node);
+      const allEdges = [...edgeSummary.incomingEdges, ...edgeSummary.outgoingEdges];
+      const selectedEdge = detailSelectedEdgeId ? cy.getElementById(detailSelectedEdgeId) : null;
+      const activeTab = detailTab;
       const parentText = data.group_parent ? '<li><strong>Parent:</strong> ' + escapeHtml(data.group_parent) + '</li>' : '';
       const notesText = data.notes ? '<li><strong>Notes:</strong> ' + escapeHtml(data.notes) + '</li>' : '';
+      let tabBody = '';
+      if (activeTab === 'nodes') {
+        tabBody =
+          '<div class="neighbor-section">' +
+          '<div class="neighbor-header"><strong>Incoming Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.incoming.length) + '</span></div>' +
+          renderNeighborChips(summary.incoming, 'incoming') +
+          '</div>' +
+          '<div class="neighbor-section">' +
+          '<div class="neighbor-header"><strong>Outgoing Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.outgoing.length) + '</span></div>' +
+          renderNeighborChips(summary.outgoing, 'outgoing') +
+          '</div>' +
+          '<p class="muted detail-focus-note">Click a node chip to jump there.</p>';
+      } else if (activeTab === 'references') {
+        tabBody = renderReferenceSummary(uniqueReferenceSummary(allEdges));
+      } else {
+        tabBody =
+          renderSelectedEdgeSummary(selectedEdge && selectedEdge.length ? selectedEdge[0] : null) +
+          renderEdgeSection('Incoming edges', edgeSummary.incomingEdges, 'incoming', detailSelectedEdgeId) +
+          renderEdgeSection('Outgoing edges', edgeSummary.outgoingEdges, 'outgoing', detailSelectedEdgeId) +
+          '<p class="muted detail-focus-note">Click an edge card to inspect its papers. Use the node chips inside each card to jump without losing the edge-first view.</p>';
+      }
       setDetails(
         '<h3>' + escapeHtml(data.label) + '</h3>' +
         '<ul class="detail-list">' +
         '<li><strong>ID:</strong> ' + escapeHtml(data.id) + '</li>' +
         '<li><strong>Type:</strong> ' + escapeHtml(data.type) + '</li>' +
+        '<li><strong>Direct edges:</strong> ' + escapeHtml(allEdges.length) + '</li>' +
         '<li><strong>Incoming:</strong> ' + escapeHtml(summary.incoming.length) + '</li>' +
         '<li><strong>Outgoing:</strong> ' + escapeHtml(summary.outgoing.length) + '</li>' +
         parentText +
         notesText +
         '</ul>' +
-        '<div class="neighbor-section">' +
-        '<div class="neighbor-header"><strong>Incoming Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.incoming.length) + '</span></div>' +
-        renderNeighborChips(summary.incoming, 'incoming') +
-        '</div>' +
-        '<div class="neighbor-section">' +
-        '<div class="neighbor-header"><strong>Outgoing Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.outgoing.length) + '</span></div>' +
-        renderNeighborChips(summary.outgoing, 'outgoing') +
-        '</div>' +
-        '<p class="muted" style="margin-top:12px;">Click a chip to jump there. Use the Focus controls to isolate 1-hop or 2-hop neighborhoods.</p>'
+        renderDetailTabs(activeTab) +
+        tabBody
       );
     }
 
     function renderEdgeDetails(edge) {
       const data = edge.data();
+      const sourceNode = edge.source();
+      const targetNode = edge.target();
       const relationText = data.relation || 'unknown';
       const signText = data.sign || 'unknown';
       const evidenceText = data.evidence || 'unknown';
       const figureText = data.figure_refs || 'unknown';
       setDetails(
-        '<h3>' + escapeHtml(data.source) + ' → ' + escapeHtml(data.target) + '</h3>' +
+        '<h3>' + escapeHtml(sourceNode.data('label') || data.source) + ' → ' + escapeHtml(targetNode.data('label') || data.target) + '</h3>' +
+        '<div class="edge-title" style="margin-top:12px;">' +
+        renderNodeJumpChip(sourceNode, 'source') +
+        '<span class="edge-arrow">→</span>' +
+        renderNodeJumpChip(targetNode, 'target') +
+        '</div>' +
         '<ul class="detail-list">' +
         '<li><strong>Category:</strong> ' + escapeHtml(data.category) + '</li>' +
         '<li><strong>Relation:</strong> ' + escapeHtml(relationText) + '</li>' +
@@ -636,12 +1062,31 @@
         '<li><strong>Figures:</strong> ' + escapeHtml(figureText) + '</li>' +
         '<li><strong>Reference IDs:</strong> ' + escapeHtml(data.paper_refs || 'none') + '</li>' +
         '</ul>' +
-        renderReferenceLinks(data.paper_entries)
+        renderEdgeReferenceChips(data.paper_entries || []) +
+        '<p class="muted detail-focus-note">Click the source or target chip to jump to that node. Each paper chip opens the DOI; the Map button filters the global graph to that reference.</p>'
       );
     }
 
     function renderDefaultDetails() {
-      setDetails('Click a node or edge to inspect metadata and linked papers.');
+      setDetails('Click a node to inspect its incoming and outgoing edges, or click an edge directly to inspect its linked papers.');
+    }
+
+    function inspectEdgeFromDetail(edgeId, animate) {
+      const edge = cy.getElementById(edgeId);
+      if (!edge || !edge.length) {
+        return;
+      }
+      detailSelectedEdgeId = edgeId;
+      updateDetailEdgeHighlight();
+      const focusNode = currentFocusNode();
+      if (focusNode) {
+        renderNodeDetails(focusNode);
+      } else {
+        renderEdgeDetails(edge[0]);
+      }
+      if (animate) {
+        cy.animate({ fit: { eles: edge.connectedNodes().add(edge), padding: 120 }, duration: 220 });
+      }
     }
 
     function renderReferenceList() {
@@ -850,7 +1295,8 @@
         { selector: 'node.focus-incoming', style: { 'overlay-opacity': 0.14, 'overlay-color': '#2563eb' } },
         { selector: 'node.focus-outgoing', style: { 'overlay-opacity': 0.14, 'overlay-color': '#d97706' } },
         { selector: 'node.focus-bidirectional', style: { 'overlay-opacity': 0.18, 'overlay-color': '#7c3aed' } },
-        { selector: 'edge.focus-edge', style: { 'opacity': 1, 'width': 5.5, 'arrow-scale': 1.2 } }
+        { selector: 'edge.focus-edge', style: { 'opacity': 1, 'width': 5.5, 'arrow-scale': 1.2 } },
+        { selector: 'edge.detail-selected-edge', style: { 'opacity': 1, 'width': 7, 'arrow-scale': 1.25, 'overlay-opacity': 0.16, 'overlay-color': '#0f766e' } }
       ],
       layout: {
         name: 'breadthfirst',
@@ -870,6 +1316,8 @@
     let focusHops = 1;
     let focusNodeId = '';
     let referenceFilterId = '';
+    let detailTab = 'edges';
+    let detailSelectedEdgeId = '';
     const PAN_SCROLL_GAIN = 1.85;
     const ZOOM_SCROLL_GAIN = 0.0090;
     let mobileLayoutEnabled = false;
@@ -1695,7 +2143,18 @@
     }
 
     function clearSearchHighlight() {
-      cy.elements().removeClass('faded highlighted focus-root focus-incoming focus-outgoing focus-bidirectional focus-edge');
+      cy.elements().removeClass('faded highlighted focus-root focus-incoming focus-outgoing focus-bidirectional focus-edge detail-selected-edge');
+    }
+
+    function updateDetailEdgeHighlight() {
+      cy.edges().removeClass('detail-selected-edge');
+      if (!detailSelectedEdgeId) {
+        return;
+      }
+      const edge = cy.getElementById(detailSelectedEdgeId);
+      if (edge && edge.length) {
+        edge.addClass('detail-selected-edge');
+      }
     }
 
     function collectionFromNodes(nodes) {
@@ -1828,9 +2287,22 @@
       updateFocusButtons();
     }
 
+    function currentFocusNode() {
+      if (!focusNodeId) {
+        return null;
+      }
+      const focusNode = cy.getElementById(focusNodeId);
+      if (!focusNode || !focusNode.length) {
+        return null;
+      }
+      return focusNode[0];
+    }
+
     function clearFocusState(refit) {
       focusNodeId = '';
+      detailSelectedEdgeId = '';
       clearSearchHighlight();
+      updateDetailEdgeHighlight();
       updateFocusStatus();
       if (refit) {
         if (referenceFilterId) {
@@ -1845,6 +2317,9 @@
     }
 
     function applyNodeFocus(node, animate) {
+      if (focusNodeId && focusNodeId !== node.id()) {
+        detailSelectedEdgeId = '';
+      }
       const result = collectFocusNeighborhood(node, focusMode, focusHops);
       clearSearchHighlight();
       cy.elements().addClass('faded');
@@ -1871,6 +2346,7 @@
       });
 
       focusNodeId = node.id();
+      updateDetailEdgeHighlight();
       updateFocusStatus(result);
       renderNodeDetails(node);
       if (animate) {
@@ -1881,6 +2357,8 @@
     function applySearch(query) {
       clearSearchHighlight();
       focusNodeId = '';
+      detailSelectedEdgeId = '';
+      updateDetailEdgeHighlight();
       updateFocusStatus();
       if (!query) {
         if (referenceFilterId) {
@@ -2033,21 +2511,56 @@
       if (!(event.target instanceof Element)) {
         return;
       }
-      const chip = event.target.closest('[data-node-id]');
-      if (!chip) {
+      if (event.target.closest('[data-role="edge-ref-link"]')) {
         return;
       }
-      const targetId = chip.getAttribute('data-node-id');
-      if (!targetId) {
+
+      const tabButton = event.target.closest('[data-detail-tab]');
+      if (tabButton) {
+        const nextTab = tabButton.getAttribute('data-detail-tab');
+        if (!nextTab || detailTab === nextTab) {
+          return;
+        }
+        detailTab = nextTab;
+        const focusNode = currentFocusNode();
+        if (focusNode) {
+          renderNodeDetails(focusNode);
+        }
         return;
       }
-      const targetNode = cy.getElementById(targetId);
-      if (!targetNode || !targetNode.length) {
+
+      const refButton = event.target.closest('[data-ref-id]');
+      if (refButton) {
+        const refId = refButton.getAttribute('data-ref-id');
+        if (refId) {
+          applyReferenceFilter(refId, true);
+        }
         return;
       }
-      cy.elements().unselect();
-      targetNode[0].select();
-      applyNodeFocus(targetNode[0], true);
+
+      const nodeButton = event.target.closest('[data-node-id]');
+      if (nodeButton) {
+        const targetId = nodeButton.getAttribute('data-node-id');
+        if (!targetId) {
+          return;
+        }
+        const targetNode = cy.getElementById(targetId);
+        if (!targetNode || !targetNode.length) {
+          return;
+        }
+        cy.elements().unselect();
+        targetNode[0].select();
+        applyNodeFocus(targetNode[0], true);
+        return;
+      }
+
+      const edgeCard = event.target.closest('[data-edge-id]');
+      if (edgeCard) {
+        const edgeId = edgeCard.getAttribute('data-edge-id');
+        if (edgeId) {
+          inspectEdgeFromDetail(edgeId, true);
+        }
+      }
     });
 
     referenceListEl.addEventListener('click', (event) => {
@@ -2072,6 +2585,8 @@
       }
     });
     cy.on('select', 'edge', (event) => {
+      detailSelectedEdgeId = event.target.id();
+      updateDetailEdgeHighlight();
       renderEdgeDetails(event.target);
       if (mobileLayoutEnabled) {
         setMobileDrawerOpen(true, 'selection');
@@ -2079,6 +2594,8 @@
     });
     cy.on('unselect', () => {
       if (!cy.$(':selected').length) {
+        detailSelectedEdgeId = '';
+        updateDetailEdgeHighlight();
         renderDefaultDetails();
       }
     });
