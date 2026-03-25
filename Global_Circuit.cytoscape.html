@@ -1,0 +1,1778 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global Circuit Cytoscape Viewer</title>
+  <style>
+    :root {
+      --bg: #f7f5ee;
+      --panel: rgba(255, 252, 245, 0.96);
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #d6d3d1;
+      --accent: #0f766e;
+      --viewport-height: 100vh;
+    }
+    html, body { height: 100%; }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(217, 119, 6, 0.10), transparent 26%),
+        var(--bg);
+    }
+    .app {
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      min-height: var(--viewport-height);
+      height: var(--viewport-height);
+    }
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      padding: 18px;
+      border-right: 1px solid var(--line);
+      background: var(--panel);
+      backdrop-filter: blur(12px);
+      overflow-y: auto;
+    }
+    .panel {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid rgba(214, 211, 209, 0.9);
+      border-radius: 16px;
+      padding: 14px 16px;
+      box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    }
+    h1, h2, h3 { margin: 0; font-weight: 700; }
+    h1 { font-size: 1.25rem; }
+    h2 { font-size: 0.95rem; margin-bottom: 10px; }
+    p, li, label, button, input, select, a, span { font-size: 0.92rem; }
+    .muted { color: var(--muted); }
+    .toolbar {
+      display: grid;
+      gap: 10px;
+    }
+    .button-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    button, select {
+      border: 1px solid #b9b2a8;
+      background: #fffdf8;
+      color: var(--ink);
+      border-radius: 999px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    button:hover, select:hover {
+      border-color: #8a8176;
+    }
+    button.is-active {
+      background: #0f766e;
+      color: #fffdf8;
+      border-color: #0f766e;
+    }
+    input[type="search"] {
+      width: 100%;
+      border: 1px solid #b9b2a8;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #fffdf8;
+      color: var(--ink);
+    }
+    .status-line {
+      line-height: 1.45;
+      min-height: 2.8em;
+    }
+    .legend {
+      display: grid;
+      gap: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 999px;
+      border: 2px solid rgba(15, 23, 42, 0.4);
+      flex: 0 0 auto;
+    }
+    .swatch-line {
+      width: 28px;
+      height: 0;
+      border-top-width: 4px;
+      border-top-style: solid;
+      flex: 0 0 auto;
+    }
+    .dashed { border-top-style: dashed; border-top-width: 3px; }
+    .viewer {
+      position: relative;
+      min-width: 0;
+      min-height: var(--viewport-height);
+      height: var(--viewport-height);
+      overflow: hidden;
+    }
+    #cy {
+      width: 100%;
+      height: 100%;
+    }
+    .floating {
+      position: absolute;
+      top: 18px;
+      right: 18px;
+      width: min(360px, calc(100vw - 36px));
+      max-height: calc(var(--viewport-height) - 36px);
+      overflow-y: auto;
+      background: rgba(255, 252, 245, 0.94);
+      border: 1px solid rgba(214, 211, 209, 0.95);
+      border-radius: 18px;
+      padding: 14px 16px;
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+      backdrop-filter: blur(12px);
+    }
+    .stats {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+    .chip {
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #f5f2ea;
+      border: 1px solid #d6d3d1;
+    }
+    .detail-list, .paper-list {
+      margin: 10px 0 0;
+      padding-left: 18px;
+    }
+    .detail-list li, .paper-list li { margin-bottom: 6px; }
+    .reference-toolbar {
+      display: grid;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .reference-status {
+      line-height: 1.45;
+      min-height: 2.8em;
+    }
+    .reference-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: start;
+      gap: 10px;
+    }
+    .reference-action {
+      white-space: nowrap;
+      padding: 6px 10px;
+      font-size: 0.84rem;
+    }
+    .neighbor-section {
+      margin-top: 14px;
+    }
+    .neighbor-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .neighbor-count {
+      color: var(--muted);
+      font-size: 0.86rem;
+    }
+    .neighbor-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .neighbor-type-group {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .neighbor-type-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.88rem;
+      color: var(--muted);
+    }
+    .neighbor-chip {
+      border: 1px solid #d6d3d1;
+      border-radius: 999px;
+      padding: 6px 10px;
+      background: #fffdf8;
+      color: var(--ink);
+      line-height: 1.25;
+    }
+    .neighbor-chip.type-region {
+      border-color: #1d4ed8;
+      background: #dbeafe;
+    }
+    .neighbor-chip.type-celltype {
+      border-color: #dc2626;
+      background: #fee2e2;
+    }
+    .neighbor-chip.type-behavior {
+      border-color: #d97706;
+      background: #fef3c7;
+    }
+    .neighbor-chip.type-state {
+      border-color: #16a34a;
+      background: #dcfce7;
+    }
+    .neighbor-chip.type-other {
+      border-color: #7c3aed;
+      background: #ede9fe;
+    }
+    a { color: #0f766e; }
+    @media (max-width: 960px) {
+      .app {
+        grid-template-columns: 1fr;
+      }
+      .sidebar {
+        border-right: 0;
+        border-bottom: 1px solid var(--line);
+      }
+      .viewer, #cy {
+        min-height: 75vh;
+        height: 75vh;
+      }
+      .floating {
+        position: static;
+        width: auto;
+        margin: 14px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <aside class="sidebar">
+      <section class="panel">
+        <h1>Global Circuit</h1>
+        <p class="muted">Interactive Cytoscape.js view for zoomed-out exploration. Use pinch to zoom, two-finger scroll to pan, drag for fine adjustments, and click a node or edge for details.</p>
+        <div class="stats" id="stats"></div>
+      </section>
+
+      <section class="panel toolbar">
+        <div>
+          <h2>Search</h2>
+          <input id="search" type="search" list="node-suggestions" placeholder="Find node label or id">
+          <datalist id="node-suggestions"></datalist>
+        </div>
+        <div>
+          <h2>Focus</h2>
+          <div id="focus-status" class="muted status-line">Select a node to trace its incoming and outgoing links.</div>
+          <div class="button-row" style="margin-top:8px;">
+            <button id="focus-incoming-btn" type="button">Incoming</button>
+            <button id="focus-both-btn" type="button">Both</button>
+            <button id="focus-outgoing-btn" type="button">Outgoing</button>
+          </div>
+          <div class="button-row" style="margin-top:8px;">
+            <button id="focus-1-btn" type="button">1 hop</button>
+            <button id="focus-2-btn" type="button">2 hop</button>
+            <button id="focus-clear-btn" type="button">Clear</button>
+          </div>
+        </div>
+        <div>
+          <h2>Layout</h2>
+          <div class="button-row">
+            <button id="fit-btn" type="button">Fit</button>
+            <button id="reset-btn" type="button">Reset view</button>
+            <button id="labels-btn" type="button">Show edge labels</button>
+          </div>
+          <div class="button-row" style="margin-top:8px;">
+            <select id="layout-select">
+              <option value="breadthfirst">breadthfirst</option>
+              <option value="cose">cose</option>
+              <option value="concentric">concentric</option>
+            </select>
+            <button id="layout-btn" type="button">Apply layout</button>
+            <button id="png-btn" type="button">Export PNG</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Node Legend</h2>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch" style="background:#dbeafe;border-color:#1d4ed8;"></span><span>Brain region</span></div>
+          <div class="legend-item"><span class="swatch" style="background:#fee2e2;border-color:#dc2626;"></span><span>Neuron or cell type</span></div>
+          <div class="legend-item"><span class="swatch" style="background:#fef3c7;border-color:#d97706;"></span><span>Behavior</span></div>
+          <div class="legend-item"><span class="swatch" style="background:#dcfce7;border-color:#16a34a;"></span><span>State or molecule</span></div>
+          <div class="legend-item"><span class="swatch" style="background:#ede9fe;border-color:#7c3aed;"></span><span>Other</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>Edge Legend</h2>
+        <div class="legend">
+          <div class="legend-item"><span class="swatch-line" style="border-color:#dc2626;"></span><span>Excitatory anatomical or circuit influence</span></div>
+          <div class="legend-item"><span class="swatch-line" style="border-color:#2563eb;"></span><span>Inhibitory anatomical or circuit influence</span></div>
+          <div class="legend-item"><span class="swatch-line" style="border-color:#475569;"></span><span>Anatomical link with unknown sign</span></div>
+          <div class="legend-item"><span class="swatch-line" style="border-color:#d97706;"></span><span>Behavioral causality</span></div>
+          <div class="legend-item"><span class="swatch-line" style="border-color:#16a34a;"></span><span>Ligand, receptor, or molecular modulation</span></div>
+          <div class="legend-item"><span class="swatch-line dashed" style="border-color:#6b7280;"></span><span>Correlation or coupling</span></div>
+          <div class="legend-item"><span class="swatch-line" style="border-color:#7c3aed;"></span><span>Other modulation</span></div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <h2>References</h2>
+        <div class="reference-toolbar">
+          <div id="reference-filter-status" class="muted reference-status">Showing all references.</div>
+          <div class="button-row">
+            <button id="reference-clear-btn" type="button">Show all</button>
+          </div>
+        </div>
+        <ul class="paper-list" id="reference-list"></ul>
+      </section>
+    </aside>
+
+    <main class="viewer">
+      <div id="cy"></div>
+      <section class="floating">
+        <h2>Selection</h2>
+        <div id="details" class="muted">Click a node or edge to inspect metadata and linked papers.</div>
+      </section>
+    </main>
+  </div>
+
+  <script src="assets/cytoscape.min.js"></script>
+  <script>
+    const GRAPH_DATA = {"elements": [{"data": {"id": "ACC", "label": "Anterior cingulate cortex", "type": "region", "notes": "Cortical input source to vmPFC during observational fear.", "group_parent": ""}}, {"data": {"id": "ACC__anchor", "label": "Anterior cingulate cortex", "type": "region", "notes": "Cortical input source to vmPFC during observational fear.", "group_parent": "ACC"}}, {"data": {"id": "ACC_area24", "label": "ACC area 24a/b", "type": "region", "notes": "Muscimol infusions targeted area 24a and 24b during harm-aversion testing.", "group_parent": "ACC"}}, {"data": {"id": "ACC_vmPFC", "label": "vmPFC-projecting ACC neurons", "type": "celltype", "notes": "ACC projection neurons whose terminals in vmPFC were optogenetically inhibited.", "group_parent": "ACC"}}, {"data": {"id": "Acute_Fear_Freezing", "label": "Acute fear freezing", "type": "behavior", "notes": "Immediate freezing response during the footshock or acute aversive epoch.", "group_parent": ""}}, {"data": {"id": "Adult_Sociability", "label": "Adult sociability", "type": "behavior", "notes": "Adult three-chamber sociability behavior.", "group_parent": ""}}, {"data": {"id": "Anosmia", "label": "Anosmia", "type": "state", "notes": "Zinc sulfate-induced loss of olfaction used to test odor dependence.", "group_parent": ""}}, {"data": {"id": "Appetitive_Social_Learning", "label": "Appetitive social learning", "type": "behavior", "notes": "Association of odor cues with socially rewarding stimuli.", "group_parent": ""}}, {"data": {"id": "Aversive_Social_Learning", "label": "Aversive social learning", "type": "behavior", "notes": "Association of odor cues with socially aversive stimuli.", "group_parent": ""}}, {"data": {"id": "Avoidance_Behavior", "label": "Avoidance behavior", "type": "behavior", "notes": "Open-arm avoidance in the elevated plus maze.", "group_parent": ""}}, {"data": {"id": "BLA", "label": "Basolateral amygdala", "type": "region", "notes": "Amygdalar input source to vmPFC during observational fear.", "group_parent": ""}}, {"data": {"id": "BLA__anchor", "label": "Basolateral amygdala", "type": "region", "notes": "Amygdalar input source to vmPFC during observational fear.", "group_parent": "BLA"}}, {"data": {"id": "BLA_vmPFC", "label": "vmPFC-projecting BLA neurons", "type": "celltype", "notes": "BLA projection neurons whose terminals in vmPFC were optogenetically inhibited.", "group_parent": "BLA"}}, {"data": {"id": "BNST", "label": "Bed Nucleus of the Stria Terminalis", "type": "region", "notes": "Extended amygdala region functionally linked to CeA anxiety circuits.", "group_parent": ""}}, {"data": {"id": "BNST__anchor", "label": "Bed Nucleus of the Stria Terminalis", "type": "region", "notes": "Extended amygdala region functionally linked to CeA anxiety circuits.", "group_parent": "BNST"}}, {"data": {"id": "BNST_OXT", "label": "BNST Oxytocin Neurons", "type": "celltype", "notes": "Oxytocin-immunoreactive neurons in the BNST", "group_parent": "BNST"}}, {"data": {"id": "BNST_Oval", "label": "Oval BNST", "type": "region", "notes": "Oval bed nucleus of the stria terminalis receiving CeA CRF axons.", "group_parent": "BNST"}}, {"data": {"id": "BNSTam", "label": "Anteromedial BNST", "type": "region", "notes": "Anterior BNST subdivision receiving BNSTmv oxytocinergic fibers.", "group_parent": "BNST"}}, {"data": {"id": "BNSTam__anchor", "label": "Anteromedial BNST", "type": "region", "notes": "Anterior BNST subdivision receiving BNSTmv oxytocinergic fibers.", "group_parent": "BNSTam"}}, {"data": {"id": "BNSTam_Oxtr", "label": "BNSTam Oxtr neurons", "type": "celltype", "notes": "Oxytocin-receptor-expressing BNSTam neurons, many of which coexpress Gad1.", "group_parent": "BNSTam"}}, {"data": {"id": "BNSTmv", "label": "Medioventral BNST", "type": "region", "notes": "BNST subdivision containing stress-sensitive extrahypothalamic oxytocin neurons.", "group_parent": "BNST"}}, {"data": {"id": "BNSTmv__anchor", "label": "Medioventral BNST", "type": "region", "notes": "BNST subdivision containing stress-sensitive extrahypothalamic oxytocin neurons.", "group_parent": "BNSTmv"}}, {"data": {"id": "BNSTmv_OXT", "label": "BNSTmv oxytocin neurons", "type": "celltype", "notes": "Extrahypothalamic oxytocin neurons in medioventral BNST.", "group_parent": "BNSTmv"}}, {"data": {"id": "BNSTpr", "label": "Principal BNST", "type": "region", "notes": "Principal nucleus of the bed nucleus of the stria terminalis.", "group_parent": "BNST"}}, {"data": {"id": "BNSTpr__anchor", "label": "Principal BNST", "type": "region", "notes": "Principal nucleus of the bed nucleus of the stria terminalis.", "group_parent": "BNSTpr"}}, {"data": {"id": "BNSTpr_Tac1", "label": "BNSTpr Tac1 neurons", "type": "celltype", "notes": "Mate-recognition neurons upstream of the preoptic mating circuit.", "group_parent": "BNSTpr"}}, {"data": {"id": "Baseline_Anxiety", "label": "Baseline anxiety-like behavior", "type": "behavior", "notes": "Open-field and elevated-plus-maze anxiety-like behavior under baseline conditions.", "group_parent": ""}}, {"data": {"id": "Biting_Attack", "label": "Predatory biting attack", "type": "behavior", "notes": "Craniofacial attack component needed for prey capture.", "group_parent": ""}}, {"data": {"id": "CCK", "label": "Cholecystokinin", "type": "other", "notes": "Peripheral satiety factor (CCK octapeptide)", "group_parent": ""}}, {"data": {"id": "Cadaverine", "label": "Cadaverine odor", "type": "state", "notes": "Polyamine odor associated with decaying tissue.", "group_parent": ""}}, {"data": {"id": "CeA", "label": "Central amygdala", "type": "region", "notes": "Central amygdala subpopulation containing CRF neurons that co-release GABA and neuropeptides.", "group_parent": ""}}, {"data": {"id": "CeA__anchor", "label": "Central amygdala", "type": "region", "notes": "Central amygdala subpopulation containing CRF neurons that co-release GABA and neuropeptides.", "group_parent": "CeA"}}, {"data": {"id": "CeA_CRF", "label": "CeA CRF neurons", "type": "celltype", "notes": "GABAergic CRF-positive central amygdala neurons co-expressing dynorphin and neurotensin.", "group_parent": "CeA"}}, {"data": {"id": "CeA_CRF_CRF", "label": "CRF from CeA CRF neurons", "type": "state", "notes": "Corticotropin-releasing factor released by CeA CRF neurons.", "group_parent": ""}}, {"data": {"id": "CeA_CRF_Dyn", "label": "Dynorphin from CeA CRF neurons", "type": "state", "notes": "Dynorphin co-released by CeA CRF neurons.", "group_parent": ""}}, {"data": {"id": "CeA_CRF_GABA", "label": "GABA from CeA CRF neurons", "type": "state", "notes": "Fast inhibitory transmitter released by CeA CRF neurons.", "group_parent": ""}}, {"data": {"id": "CeA_CRF_NTS", "label": "Neurotensin from CeA CRF neurons", "type": "state", "notes": "Neurotensin co-expressed by CeA CRF neurons.", "group_parent": ""}}, {"data": {"id": "CeA_PAG", "label": "PAG-projecting CeA neurons", "type": "celltype", "notes": "Projection-defined CeA neurons controlling pursuit.", "group_parent": "CeA"}}, {"data": {"id": "CeA_PCRt", "label": "PCRt-projecting CeA neurons", "type": "celltype", "notes": "Projection-defined CeA neurons controlling mandibular and cervical hunting components.", "group_parent": "CeA"}}, {"data": {"id": "CeL", "label": "Central amygdala lateral subdivision", "type": "region", "notes": "CeL neurons receive oxytocin-system input.", "group_parent": "CeA"}}, {"data": {"id": "CeM", "label": "Central amygdala medial subdivision", "type": "region", "notes": "CeM output neurons show increased IPSCs after stimulation of fear-tagged OT terminals.", "group_parent": "CeA"}}, {"data": {"id": "Conspecific_Burial", "label": "Burial of dead conspecifics", "type": "behavior", "notes": "Defensive burying behavior directed toward aged carcasses or odorized objects.", "group_parent": ""}}, {"data": {"id": "Contextual_Fear_Freezing", "label": "Contextual fear freezing", "type": "behavior", "notes": "Freezing during contextual fear recall.", "group_parent": ""}}, {"data": {"id": "Cortical_Delta_Power", "label": "Cortical EEG delta power", "type": "state", "notes": "Low-frequency EEG power associated with the anesthetized state.", "group_parent": ""}}, {"data": {"id": "D2R_Striatopallidal", "label": "D2R striatopallidal neurons", "type": "celltype", "notes": "A2AR-positive indirect-pathway medium spiny neurons selectively ablated in the study.", "group_parent": "Striatum"}}, {"data": {"id": "DMH", "label": "DMH neurons", "type": "region", "notes": "Dorsomedial hypothalamus", "group_parent": ""}}, {"data": {"id": "DMH__anchor", "label": "DMH neurons", "type": "region", "notes": "Dorsomedial hypothalamus", "group_parent": "DMH"}}, {"data": {"id": "DMH_vGluT2", "label": "DMH vGluT2+ neurons", "type": "celltype", "notes": "Excitatory neurons in DMH", "group_parent": "DMH"}}, {"data": {"id": "Drug_Reward_CPP", "label": "Amphetamine conditioned place preference", "type": "behavior", "notes": "Preference for the amphetamine-paired chamber used as a reward measure.", "group_parent": ""}}, {"data": {"id": "Emergence_Isoflurane", "label": "Emergence from isoflurane anesthesia", "type": "behavior", "notes": "Recovery of righting reflex after isoflurane termination.", "group_parent": ""}}, {"data": {"id": "Fear_Extinction", "label": "Context-specific fear extinction", "type": "behavior", "notes": "Reduction of conditioned freezing across extinction sessions.", "group_parent": ""}}, {"data": {"id": "Fear_Learning", "label": "Fear learning", "type": "behavior", "notes": "Contextual and cued fear conditioning acquisition and retrieval.", "group_parent": ""}}, {"data": {"id": "Food_Intake", "label": "Food Intake", "type": "behavior", "notes": "Re-feeding behavior", "group_parent": ""}}, {"data": {"id": "GG_Neurons", "label": "Grueneberg ganglion neurons", "type": "celltype", "notes": "Calcium-imaged sensory neurons activated by alarm pheromones and predator-scent ligands.", "group_parent": "Grueneberg_Ganglion"}}, {"data": {"id": "Globus_Pallidus", "label": "Globus pallidus", "type": "region", "notes": "Indirect-pathway target receiving GABAergic input from D2R striatopallidal neurons.", "group_parent": ""}}, {"data": {"id": "Grueneberg_Ganglion", "label": "Grueneberg ganglion", "type": "region", "notes": "Nasal olfactory subsystem specialized for alarm cues and predator-like volatiles.", "group_parent": ""}}, {"data": {"id": "Grueneberg_Ganglion__anchor", "label": "Grueneberg ganglion", "type": "region", "notes": "Nasal olfactory subsystem specialized for alarm cues and predator-like volatiles.", "group_parent": "Grueneberg_Ganglion"}}, {"data": {"id": "Harm_Aversion", "label": "Harm aversion / switching away from shock lever", "type": "behavior", "notes": "Reduction in choosing the lever that shocks a neighboring rat.", "group_parent": ""}}, {"data": {"id": "HypOT_Fear_Engram", "label": "Fear-activated hypothalamic OT neurons", "type": "celltype", "notes": "vGATE-tagged oxytocin neurons in PVN and SON that encode contextual fear memory.", "group_parent": ""}}, {"data": {"id": "Infanticide", "label": "Pup-directed aggression", "type": "behavior", "notes": "Attack behavior directed toward pups.", "group_parent": ""}}, {"data": {"id": "Innate_Fear_Response", "label": "Innate fear / stress response", "type": "behavior", "notes": "Fear-related behavioral and corticosterone responses to alarm or predator cues.", "group_parent": ""}}, {"data": {"id": "Isoflurane_Anesthesia", "label": "Isoflurane anesthesia state", "type": "state", "notes": "Loss of consciousness under 1.4% isoflurane.", "group_parent": ""}}, {"data": {"id": "Juvenile_Social_Isolation", "label": "Juvenile social isolation", "type": "state", "notes": "Two-week juvenile social isolation immediately after weaning.", "group_parent": ""}}, {"data": {"id": "LA", "label": "Lateral amygdala", "type": "region", "notes": "Amygdala subdivision required for threat memory formation.", "group_parent": ""}}, {"data": {"id": "LHA", "label": "LHA neurons", "type": "region", "notes": "Lateral hypothalamus", "group_parent": ""}}, {"data": {"id": "LHA__anchor", "label": "LHA neurons", "type": "region", "notes": "Lateral hypothalamus", "group_parent": "LHA"}}, {"data": {"id": "LHA_PMC", "label": "PMC-projecting LHA neurons", "type": "celltype", "notes": "Mixed LHA population presynaptic to PMC CRH neurons, predominantly GAD-positive.", "group_parent": "LHA"}}, {"data": {"id": "LHA_Pmch", "label": "LHA Pmch+ neurons", "type": "celltype", "notes": "Melanin-concentrating hormone-producing neurons in LHA", "group_parent": "LHA"}}, {"data": {"id": "LHA_vGluT2", "label": "LHA vGluT2+ neurons", "type": "celltype", "notes": "Excitatory neurons in lateral hypothalamus", "group_parent": "LHA"}}, {"data": {"id": "Lever_Shock_Contingency", "label": "Lever-shock contingency", "type": "state", "notes": "Victim shock occurs immediately and contingently when the actor presses the preferred lever.", "group_parent": ""}}, {"data": {"id": "Locomotion", "label": "Spontaneous locomotion", "type": "behavior", "notes": "Open-field locomotor activity.", "group_parent": ""}}, {"data": {"id": "MPA", "label": "Medial preoptic area", "type": "region", "notes": "Medial preoptic area node engaged during parenting and related social behaviors.", "group_parent": ""}}, {"data": {"id": "MPA__anchor", "label": "Medial preoptic area", "type": "region", "notes": "Medial preoptic area node engaged during parenting and related social behaviors.", "group_parent": "MPA"}}, {"data": {"id": "MPA_CaMKII_vPAG", "label": "vPAG-projecting CaMKIIalpha+ MPA neurons", "type": "celltype", "notes": "Excitatory CaMKIIalpha-positive MPA neurons that project to ventral PAG.", "group_parent": "MPA"}}, {"data": {"id": "MPA_Galanin", "label": "MPOA galanin neurons", "type": "celltype", "notes": "Galanin-expressing MPOA neurons activated during parenting.", "group_parent": "MPA"}}, {"data": {"id": "MPNm", "label": "MPNm neurons", "type": "region", "notes": "Medial part of medial preoptic nucleus", "group_parent": ""}}, {"data": {"id": "MPNm__anchor", "label": "MPNm neurons", "type": "region", "notes": "Medial part of medial preoptic nucleus", "group_parent": "MPNm"}}, {"data": {"id": "MPNm_Calcr", "label": "MPNm Calcr+ neurons", "type": "celltype", "notes": "Calcitonin receptor-expressing neurons in MPNm", "group_parent": "MPNm"}}, {"data": {"id": "MPNm_vGluT2", "label": "MPNm vGluT2+ neurons", "type": "celltype", "notes": "Excitatory neurons in MPNm", "group_parent": "MPNm"}}, {"data": {"id": "Male_Mating_Behavior", "label": "Male mating behavior", "type": "behavior", "notes": "Mounting and related mating actions in males.", "group_parent": ""}}, {"data": {"id": "Male_Sexual_Behavior", "label": "Male sexual behavior", "type": "behavior", "notes": "Mounting and related mating displays.", "group_parent": ""}}, {"data": {"id": "Maternal_Crouching", "label": "Maternal crouching over pups", "type": "behavior", "notes": "Crouching behavior over pups during lactation.", "group_parent": ""}}, {"data": {"id": "Meal_Size", "label": "Meal Size", "type": "behavior", "notes": "Amount of food consumed per meal", "group_parent": ""}}, {"data": {"id": "Moving_Target_Chasing", "label": "Moving-target chasing", "type": "behavior", "notes": "Active following of moving objects within the binocular visual field.", "group_parent": ""}}, {"data": {"id": "NAc", "label": "Nucleus accumbens", "type": "region", "notes": "Ventral striatal compartment linked to reinforcement.", "group_parent": ""}}, {"data": {"id": "NAc__anchor", "label": "Nucleus accumbens", "type": "region", "notes": "Ventral striatal compartment linked to reinforcement.", "group_parent": "NAc"}}, {"data": {"id": "NAcSh", "label": "Nucleus accumbens shell", "type": "region", "notes": "Shell subdivision of nucleus accumbens.", "group_parent": ""}}, {"data": {"id": "NAc_D2R_Striatopallidal", "label": "NAc D2R striatopallidal neurons", "type": "celltype", "notes": "Ventral-striatal D2R indirect-pathway neurons ablated in the NAc-specific experiments.", "group_parent": "NAc"}}, {"data": {"id": "NAc_DA_Release", "label": "NAc dopamine release", "type": "state", "notes": "Dopamine release in nucleus accumbens evoked by POA Tacr1 to VTA activation.", "group_parent": ""}}, {"data": {"id": "OF_Escape", "label": "Observational-fear escape behavior", "type": "behavior", "notes": "Escape or movement away from the demonstrator during observational fear.", "group_parent": ""}}, {"data": {"id": "OF_Freezing", "label": "Observer freezing during observational fear", "type": "behavior", "notes": "Observer freezing response during observational fear.", "group_parent": ""}}, {"data": {"id": "OT_Glutamate_Shift", "label": "Fear-induced glutamatergic shift at OT to CeL terminals", "type": "state", "notes": "Fear experience increases vGluT2-associated glutamatergic transmission from OT axons in CeL.", "group_parent": ""}}, {"data": {"id": "OT_ligand", "label": "Oxytocin ligand", "type": "state", "notes": "Oxytocin secreted from PVH", "group_parent": ""}}, {"data": {"id": "Object_Exploration", "label": "Object exploration and manipulation", "type": "behavior", "notes": "Touching, biting, carrying, and dislocating 3D objects.", "group_parent": ""}}, {"data": {"id": "Oxytocin_Receptor", "label": "Oxytocin Receptor", "type": "other", "notes": "Receptor for oxytocin", "group_parent": ""}}, {"data": {"id": "PAG", "label": "Lateral and ventrolateral PAG", "type": "region", "notes": "Midbrain target through which CeA regulates prey pursuit.", "group_parent": ""}}, {"data": {"id": "PAG__anchor", "label": "Lateral and ventrolateral PAG", "type": "region", "notes": "Midbrain target through which CeA regulates prey pursuit.", "group_parent": "PAG"}}, {"data": {"id": "PAG_VGlut2", "label": "PAG VGLUT2 pursuit-suppressing neurons", "type": "celltype", "notes": "VGLUT2 neurons in PAG that oppose pursuit when active.", "group_parent": "PAG"}}, {"data": {"id": "PCRt", "label": "Parvocellular reticular formation", "type": "region", "notes": "Brainstem reticular region involved in craniofacial premotor control.", "group_parent": ""}}, {"data": {"id": "PCRt__anchor", "label": "Parvocellular reticular formation", "type": "region", "notes": "Brainstem reticular region involved in craniofacial premotor control.", "group_parent": "PCRt"}}, {"data": {"id": "PCRt_VGat", "label": "PCRt VGAT inhibitory interneurons", "type": "celltype", "notes": "Inhibitory PCRt neurons that suppress biting-related motor output.", "group_parent": "PCRt"}}, {"data": {"id": "PMC", "label": "Pontine micturition center (Barrington's nucleus)", "type": "region", "notes": "Brainstem output nucleus that controls micturition.", "group_parent": ""}}, {"data": {"id": "PMC__anchor", "label": "Pontine micturition center (Barrington's nucleus)", "type": "region", "notes": "Brainstem output nucleus that controls micturition.", "group_parent": "PMC"}}, {"data": {"id": "PMC_Crh", "label": "PMC CRH neurons", "type": "celltype", "notes": "Genetically defined PMC neurons used for rabies input mapping.", "group_parent": "PMC"}}, {"data": {"id": "POA", "label": "Preoptic area", "type": "region", "notes": "Preoptic hypothalamic region controlling mating displays.", "group_parent": ""}}, {"data": {"id": "POA__anchor", "label": "Preoptic area", "type": "region", "notes": "Preoptic hypothalamic region controlling mating displays.", "group_parent": "POA"}}, {"data": {"id": "POA_Tacr1", "label": "POA Tacr1 neurons", "type": "celltype", "notes": "Preoptic Tacr1 neurons driving male sexual behavior, drive, and reward.", "group_parent": "POA"}}, {"data": {"id": "PVH", "label": "Paraventricular hypothalamic nucleus (PVH/PVN)", "type": "region", "notes": "Hypothalamic nucleus", "group_parent": ""}}, {"data": {"id": "PVH__anchor", "label": "Paraventricular hypothalamic nucleus (PVH/PVN)", "type": "region", "notes": "Hypothalamic nucleus", "group_parent": "PVH"}}, {"data": {"id": "PVH_AVP", "label": "PVH/PVN vasopressin neurons", "type": "celltype", "notes": "Vasotocin/Vasopressin neurons within PVH", "group_parent": "PVH"}}, {"data": {"id": "PVH_CRH", "label": "PVH CRH neurons", "type": "celltype", "notes": "Corticotropin-releasing hormone neurons within PVH", "group_parent": "PVH"}}, {"data": {"id": "PVH_OT", "label": "PVH/PVN oxytocin neurons", "type": "celltype", "notes": "Paraventricular hypothalamic nucleus oxytocin neurons", "group_parent": "PVH"}}, {"data": {"id": "PVT", "label": "Paraventricular thalamus", "type": "region", "notes": "Midline thalamic nucleus implicated in wakefulness and arousal.", "group_parent": ""}}, {"data": {"id": "PVT__anchor", "label": "Paraventricular thalamus", "type": "region", "notes": "Midline thalamic nucleus implicated in wakefulness and arousal.", "group_parent": "PVT"}}, {"data": {"id": "PVT_vGluT2", "label": "PVT vGluT2+ neurons", "type": "celltype", "notes": "Glutamatergic PVT neurons recorded and manipulated during isoflurane anesthesia.", "group_parent": "PVT"}}, {"data": {"id": "Parental_Behavior", "label": "Parental caregiving behavior", "type": "behavior", "notes": "Retrieval, grooming, crouching and related parenting responses toward pups.", "group_parent": ""}}, {"data": {"id": "PeFA", "label": "PeFA neurons", "type": "region", "notes": "Perifornical area", "group_parent": ""}}, {"data": {"id": "PeFA__anchor", "label": "PeFA neurons", "type": "region", "notes": "Perifornical area", "group_parent": "PeFA"}}, {"data": {"id": "PeFA_Ucn3", "label": "PeFA Ucn3+ neurons", "type": "celltype", "notes": "Urocortin 3-expressing neurons in PeFA", "group_parent": "PeFA"}}, {"data": {"id": "Piriform", "label": "Piriform cortex", "type": "region", "notes": "Olfactory sensory cortex receiving hypothalamic oxytocinergic input.", "group_parent": ""}}, {"data": {"id": "Piriform__anchor", "label": "Piriform cortex", "type": "region", "notes": "Olfactory sensory cortex receiving hypothalamic oxytocinergic input.", "group_parent": "Piriform"}}, {"data": {"id": "Piriform_Oxtr", "label": "Oxtr-expressing piriform ensembles", "type": "celltype", "notes": "Piriform neurons whose social cue entrainment depends on oxytocin receptor signaling.", "group_parent": "Piriform"}}, {"data": {"id": "PrRP", "label": "Prolactin-Releasing Peptide", "type": "other", "notes": "Peptide ligand", "group_parent": ""}}, {"data": {"id": "Predatory_Hunting", "label": "Predatory hunting", "type": "behavior", "notes": "Integrated prey capture behavior.", "group_parent": ""}}, {"data": {"id": "Prey_Hunting", "label": "Prey hunting and carrying", "type": "behavior", "notes": "Chasing, biting, grabbing, and carrying crickets.", "group_parent": ""}}, {"data": {"id": "Prey_Pursuit", "label": "Prey pursuit", "type": "behavior", "notes": "Locomotor pursuit of prey.", "group_parent": ""}}, {"data": {"id": "Putrescine", "label": "Putrescine odor", "type": "state", "notes": "Polyamine odor associated with decaying tissue.", "group_parent": ""}}, {"data": {"id": "Reduced_Sucrose_Preference", "label": "Reduced sucrose preference", "type": "behavior", "notes": "Anhedonia-like reduction in sucrose preference.", "group_parent": ""}}, {"data": {"id": "Repeated_Social_Defeat", "label": "Repeated social-defeat stress", "type": "state", "notes": "Chronic social stress paradigm used to distinguish susceptible and resilient mice.", "group_parent": ""}}, {"data": {"id": "SBT_Alarm_Pheromone", "label": "SBT alarm pheromone", "type": "state", "notes": "2-sec-butyl-4,5-dihydrothiazole identified as a mouse alarm pheromone.", "group_parent": ""}}, {"data": {"id": "SON", "label": "Supraoptic Nucleus", "type": "region", "notes": "Hypothalamic supraoptic nucleus", "group_parent": ""}}, {"data": {"id": "SON__anchor", "label": "Supraoptic Nucleus", "type": "region", "notes": "Hypothalamic supraoptic nucleus", "group_parent": "SON"}}, {"data": {"id": "SON_AVP", "label": "SON Vasopressin Neurons", "type": "celltype", "notes": "Vasopressin-immunoreactive neurons in the SON", "group_parent": "SON"}}, {"data": {"id": "SON_OXT", "label": "SON Oxytocin Neurons", "type": "celltype", "notes": "Oxytocin-immunoreactive neurons in the SON", "group_parent": "SON"}}, {"data": {"id": "Sexual_Reward", "label": "Sexual reward", "type": "behavior", "notes": "Reinforcement and self-stimulation associated with the mating circuit.", "group_parent": ""}}, {"data": {"id": "Shock_Preexposure", "label": "Prior footshock experience", "type": "state", "notes": "Actor rat previously exposed to footshocks before harm-aversion testing.", "group_parent": ""}}, {"data": {"id": "Social_Approach", "label": "Social approach", "type": "behavior", "notes": "Time spent in the interaction zone with a social target.", "group_parent": ""}}, {"data": {"id": "Social_Avoidance", "label": "Social avoidance", "type": "behavior", "notes": "Reduced interaction with a social target after defeat stress.", "group_parent": ""}}, {"data": {"id": "Social_Interaction", "label": "Sociability / juvenile interaction", "type": "behavior", "notes": "Time spent interacting with a juvenile conspecific.", "group_parent": ""}}, {"data": {"id": "Social_Isolation", "label": "Social isolation", "type": "state", "notes": "Post-weaning social isolation that permits robust urine-driven TCM.", "group_parent": ""}}, {"data": {"id": "Social_Memory", "label": "Social memory / social discrimination", "type": "behavior", "notes": "Ability to discriminate familiar from novel conspecifics.", "group_parent": ""}}, {"data": {"id": "Social_Reward", "label": "Social reward / social CPP", "type": "behavior", "notes": "Preference for a socially conditioned context.", "group_parent": ""}}, {"data": {"id": "Social_Vigilance", "label": "Social vigilance", "type": "behavior", "notes": "Time spent orienting toward a social target outside the interaction zone.", "group_parent": ""}}, {"data": {"id": "Stimulated_Anxiety", "label": "Activated anxiety-like behavior", "type": "behavior", "notes": "Anxiety-like behavior evoked by chemogenetic activation of CeA CRF neurons.", "group_parent": ""}}, {"data": {"id": "Striatum", "label": "Striatum", "type": "region", "notes": "Dorsal and ventral striatal territory containing D2R striatopallidal neurons.", "group_parent": ""}}, {"data": {"id": "Striatum__anchor", "label": "Striatum", "type": "region", "notes": "Dorsal and ventral striatal territory containing D2R striatopallidal neurons.", "group_parent": "Striatum"}}, {"data": {"id": "Substance_P", "label": "Substance P", "type": "state", "notes": "Tac1-derived peptide released by BNSTpr Tac1 neurons.", "group_parent": ""}}, {"data": {"id": "TMT_Predator_Scent", "label": "TMT predator scent", "type": "state", "notes": "Predator-derived sulfur-containing volatile that shares structural similarity with the alarm cue.", "group_parent": ""}}, {"data": {"id": "Territory_Covering_Micturition", "label": "Territory-covering micturition", "type": "behavior", "notes": "High-density urine marking across the arena.", "group_parent": ""}}, {"data": {"id": "Theta_8Hz_vHPC_mPFC", "label": "8-Hz vHPC-mPFC theta synchrony", "type": "state", "notes": "Theta-frequency oscillatory communication between ventral hippocampus and mPFC.", "group_parent": ""}}, {"data": {"id": "Threat_Memory", "label": "Threat memory", "type": "behavior", "notes": "One-day auditory threat memory retrieval after conditioning.", "group_parent": ""}}, {"data": {"id": "Urine_Stimulus", "label": "Urine cue", "type": "state", "notes": "Non-self male urine placed in the test arena.", "group_parent": ""}}, {"data": {"id": "VTA", "label": "Ventral tegmental area", "type": "region", "notes": "Midbrain reward region.", "group_parent": ""}}, {"data": {"id": "VTA__anchor", "label": "Ventral tegmental area", "type": "region", "notes": "Midbrain reward region.", "group_parent": "VTA"}}, {"data": {"id": "VTA_DA", "label": "VTA dopamine neurons", "type": "celltype", "notes": "TH-positive VTA neurons driven with tonic or phasic optogenetic stimulation.", "group_parent": "VTA"}}, {"data": {"id": "VTA_DA_NAc", "label": "NAc-projecting VTA dopamine neurons", "type": "celltype", "notes": "Projection-defined VTA dopamine neurons driving susceptibility through the nucleus accumbens.", "group_parent": "VTA"}}, {"data": {"id": "VTA_DA_NAcMedS", "label": "NAc medial shell-projecting VTA dopamine neurons", "type": "celltype", "notes": "Reward-related VTA DA neurons retrogradely labeled from the nucleus accumbens medial shell.", "group_parent": "VTA"}}, {"data": {"id": "VTA_DA_mPFC", "label": "mPFC-projecting VTA dopamine neurons", "type": "celltype", "notes": "Projection-defined VTA dopamine neurons with a resilience-supporting role.", "group_parent": "VTA"}}, {"data": {"id": "mPFC", "label": "Medial prefrontal cortex", "type": "region", "notes": "Medial prefrontal cortex deep-layer circuitry regulating sociability.", "group_parent": ""}}, {"data": {"id": "mPFC__anchor", "label": "Medial prefrontal cortex", "type": "region", "notes": "Medial prefrontal cortex deep-layer circuitry regulating sociability.", "group_parent": "mPFC"}}, {"data": {"id": "mPFC_LTS_SST", "label": "mPFC LTS-SST interneurons", "type": "celltype", "notes": "Low-threshold-spiking somatostatin interneurons in medial prefrontal cortex.", "group_parent": "mPFC"}}, {"data": {"id": "mPFC_pPVT", "label": "mPFC neurons projecting to posterior PVT", "type": "celltype", "notes": "Projection-defined deep-layer mPFC neurons targeting posterior paraventricular thalamus.", "group_parent": "mPFC"}}, {"data": {"id": "pIC", "label": "Posterior insular cortex", "type": "region", "notes": "Posterior insular cortex processing aversive somatosensory information during threat learning.", "group_parent": ""}}, {"data": {"id": "pIC__anchor", "label": "Posterior insular cortex", "type": "region", "notes": "Posterior insular cortex processing aversive somatosensory information during threat learning.", "group_parent": "pIC"}}, {"data": {"id": "pIC_CeA", "label": "CeA-projecting posterior insula neurons", "type": "celltype", "notes": "Posterior insular neurons projecting to the central amygdala.", "group_parent": "pIC"}}, {"data": {"id": "pIC_LA", "label": "LA-projecting posterior insula neurons", "type": "celltype", "notes": "Posterior insular neurons projecting to the lateral amygdala.", "group_parent": "pIC"}}, {"data": {"id": "pPVT", "label": "Posterior paraventricular thalamus", "type": "region", "notes": "Posterior part of the paraventricular nucleus of thalamus.", "group_parent": ""}}, {"data": {"id": "pPVT__anchor", "label": "Posterior paraventricular thalamus", "type": "region", "notes": "Posterior part of the paraventricular nucleus of thalamus.", "group_parent": "pPVT"}}, {"data": {"id": "pPVT_OTR", "label": "pPVT oxytocin-receptor neurons", "type": "celltype", "notes": "OTR-expressing neurons in posterior PVT activated by pup exposure.", "group_parent": "pPVT"}}, {"data": {"id": "vCA1", "label": "Ventral CA1", "type": "region", "notes": "Ventral hippocampal CA1 region.", "group_parent": ""}}, {"data": {"id": "vCA1__anchor", "label": "Ventral CA1", "type": "region", "notes": "Ventral hippocampal CA1 region.", "group_parent": "vCA1"}}, {"data": {"id": "vCA1_NAcSh", "label": "vCA1 neurons projecting to NAc shell", "type": "celltype", "notes": "Projection-defined ventral CA1 pyramidal neurons targeting nucleus accumbens shell.", "group_parent": "vCA1"}}, {"data": {"id": "vCA1_PV", "label": "vCA1 parvalbumin interneurons", "type": "celltype", "notes": "Local inhibitory PV interneurons in ventral CA1 that regulate social memory retrieval.", "group_parent": "vCA1"}}, {"data": {"id": "vHPC", "label": "Ventral hippocampus", "type": "region", "notes": "Ventral hippocampal region providing input to medial prefrontal cortex.", "group_parent": ""}}, {"data": {"id": "vHPC__anchor", "label": "Ventral hippocampus", "type": "region", "notes": "Ventral hippocampal region providing input to medial prefrontal cortex.", "group_parent": "vHPC"}}, {"data": {"id": "vHPC_mPFC", "label": "mPFC-projecting ventral hippocampal neurons", "type": "celltype", "notes": "Projection-defined ventral hippocampal neurons with terminals in mPFC.", "group_parent": "vHPC"}}, {"data": {"id": "vPAG", "label": "Ventral periaqueductal gray", "type": "region", "notes": "Main postsynaptic target of the MPA circuit during target-directed actions.", "group_parent": ""}}, {"data": {"id": "vmPFC", "label": "Ventromedial prefrontal cortex", "type": "region", "notes": "Observer vmPFC (PL/IL) encoding self-states during observational fear.", "group_parent": ""}}, {"data": {"id": "vmPFC__anchor", "label": "Ventromedial prefrontal cortex", "type": "region", "notes": "Observer vmPFC (PL/IL) encoding self-states during observational fear.", "group_parent": "vmPFC"}}, {"data": {"id": "vmPFC_ShockAct", "label": "Other-shock-activated vmPFC neurons", "type": "celltype", "notes": "vmPFC subpopulation activated when the demonstrator receives footshocks.", "group_parent": "vmPFC"}}, {"data": {"id": "vmPFC_ShockSupp", "label": "Other-shock-suppressed vmPFC neurons", "type": "celltype", "notes": "vmPFC subpopulation suppressed when the demonstrator receives footshocks.", "group_parent": "vmPFC"}}, {"data": {"id": "e1", "source": "BNSTpr_Tac1", "target": "POA_Tacr1", "relation": "projects_to", "sign": "exc", "evidence": "opto, other", "figure_refs": "Fig2B, Fig2K, Fig2L", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "projects_to · R2", "category": "anatomical_exc", "source_endpoint": "90.0deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e2", "source": "Substance_P", "target": "POA_Tacr1", "relation": "modulates", "sign": "exc", "evidence": "other", "figure_refs": "Fig5A, Fig5H", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "modulates · R2", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e3", "source": "POA_Tacr1", "target": "Male_Sexual_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3C, Fig3L, Fig3S", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "modulates · R2", "category": "behavior", "source_endpoint": "70.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-51.0 -51.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e4", "source": "POA_Tacr1", "target": "VTA__anchor", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig7P", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "projects_to · R2", "category": "anatomical_exc", "source_endpoint": "109.5deg", "target_endpoint": "270.0deg", "control_point_distances": "51.0 51.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e5", "source": "POA_Tacr1", "target": "NAc_DA_Release", "relation": "influences", "sign": "exc", "evidence": "opto, recording", "figure_refs": "Fig7N, Fig7P", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "influences · R2", "category": "molecular", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e6", "source": "POA_Tacr1", "target": "Sexual_Reward", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig6F, Fig6G, Fig7E", "paper_refs": "R2", "paper_entries": [{"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}], "compact_label": "modulates · R2", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e7", "source": "pIC_LA", "target": "LA", "relation": "projects_to", "sign": "exc", "evidence": "electrophysiology, tracing", "figure_refs": "Fig2, Fig3", "paper_refs": "R23", "paper_entries": [{"ref_id": "R23", "label": "Berret et al, Science, 2019", "url": "https://doi.org/10.1126/science.aaw0474"}], "compact_label": "projects_to · R23", "category": "anatomical_exc", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e8", "source": "pIC_CeA", "target": "CeA__anchor", "relation": "projects_to", "sign": "exc", "evidence": "electrophysiology, tracing", "figure_refs": "Fig2, Fig3", "paper_refs": "R23", "paper_entries": [{"ref_id": "R23", "label": "Berret et al, Science, 2019", "url": "https://doi.org/10.1126/science.aaw0474"}], "compact_label": "projects_to · R23", "category": "anatomical_exc", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e9", "source": "pIC_CeA", "target": "Acute_Fear_Freezing", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3, Fig4", "paper_refs": "R23", "paper_entries": [{"ref_id": "R23", "label": "Berret et al, Science, 2019", "url": "https://doi.org/10.1126/science.aaw0474"}], "compact_label": "modulates · R23", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e10", "source": "pIC_LA", "target": "Threat_Memory", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3, Fig4, Fig5", "paper_refs": "R23", "paper_entries": [{"ref_id": "R23", "label": "Berret et al, Science, 2019", "url": "https://doi.org/10.1126/science.aaw0474"}], "compact_label": "modulates · R23", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e11", "source": "SBT_Alarm_Pheromone", "target": "GG_Neurons", "relation": "modulates", "sign": "exc", "evidence": "calcium_imaging", "figure_refs": "Fig2C, Fig2D, Fig2F", "paper_refs": "R16", "paper_entries": [{"ref_id": "R16", "label": "Brechbühl et al, PNAS, 2013", "url": "https://doi.org/10.1073/pnas.1214249110"}], "compact_label": "modulates · R16", "category": "molecular", "source_endpoint": "83.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e12", "source": "TMT_Predator_Scent", "target": "GG_Neurons", "relation": "modulates", "sign": "exc", "evidence": "calcium_imaging", "figure_refs": "Fig2H", "paper_refs": "R16", "paper_entries": [{"ref_id": "R16", "label": "Brechbühl et al, PNAS, 2013", "url": "https://doi.org/10.1073/pnas.1214249110"}], "compact_label": "modulates · R16", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e13", "source": "SBT_Alarm_Pheromone", "target": "Innate_Fear_Response", "relation": "modulates", "sign": "exc", "evidence": "behavior, hormone", "figure_refs": "Fig2G", "paper_refs": "R16", "paper_entries": [{"ref_id": "R16", "label": "Brechbühl et al, PNAS, 2013", "url": "https://doi.org/10.1073/pnas.1214249110"}], "compact_label": "modulates · R16", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e14", "source": "Isoflurane_Anesthesia", "target": "PVT_vGluT2", "relation": "correlates_with", "sign": "inh", "evidence": "IHC, other", "figure_refs": "Fig1, Fig2", "paper_refs": "R24", "paper_entries": [{"ref_id": "R24", "label": "Bu et al, BMC Anesthesiology, 2022", "url": "https://doi.org/10.1186/s12871-022-01799-y"}], "compact_label": "correlates_with · R24", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e15", "source": "PVT_vGluT2", "target": "Emergence_Isoflurane", "relation": "modulates", "sign": "exc", "evidence": "behavior, chemogenetics", "figure_refs": "Fig3, Fig4", "paper_refs": "R24", "paper_entries": [{"ref_id": "R24", "label": "Bu et al, BMC Anesthesiology, 2022", "url": "https://doi.org/10.1186/s12871-022-01799-y"}], "compact_label": "modulates · R24", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e16", "source": "PVT_vGluT2", "target": "Cortical_Delta_Power", "relation": "modulates", "sign": "inh", "evidence": "EEG, chemogenetics", "figure_refs": "Fig4", "paper_refs": "R24", "paper_entries": [{"ref_id": "R24", "label": "Bu et al, BMC Anesthesiology, 2022", "url": "https://doi.org/10.1186/s12871-022-01799-y"}], "compact_label": "modulates · R24", "category": "molecular", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e17", "source": "Repeated_Social_Defeat", "target": "VTA_DA", "relation": "correlates_with", "sign": "exc", "evidence": "behavior, electrophysiology", "figure_refs": "Intro, Supplementary", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "correlates_with · R10", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e18", "source": "VTA_DA_NAc", "target": "NAc__anchor", "relation": "projects_to", "sign": "exc", "evidence": "opto, other", "figure_refs": "Fig3, Fig4", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "projects_to · R10", "category": "anatomical_exc", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e19", "source": "VTA_DA_mPFC", "target": "mPFC__anchor", "relation": "projects_to", "sign": "exc", "evidence": "opto, other", "figure_refs": "Fig3, Fig4", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "projects_to · R10", "category": "anatomical_exc", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e20", "source": "VTA_DA_NAc", "target": "Social_Avoidance", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3, Fig4", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "modulates · R10", "category": "behavior", "source_endpoint": "103.0deg", "target_endpoint": "263.5deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e21", "source": "VTA_DA_NAc", "target": "Reduced_Sucrose_Preference", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig1F, Fig2B", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "modulates · R10", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e22", "source": "VTA_DA_mPFC", "target": "Social_Avoidance", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig4", "paper_refs": "R10", "paper_entries": [{"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}], "compact_label": "modulates · R10", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e23", "source": "PVH_OT", "target": "Piriform__anchor", "relation": "projects_to", "sign": "unknown", "evidence": "other", "figure_refs": "Fig4E, Fig4J", "paper_refs": "R6", "paper_entries": [{"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}], "compact_label": "projects_to · R6", "category": "anatomical_unknown", "source_endpoint": "96.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e24", "source": "SON_OXT", "target": "Piriform__anchor", "relation": "projects_to", "sign": "unknown", "evidence": "other", "figure_refs": "Fig4J", "paper_refs": "R6", "paper_entries": [{"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}], "compact_label": "projects_to · R6", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e25", "source": "OT_ligand", "target": "Piriform_Oxtr", "relation": "modulates", "sign": "exc", "evidence": "ISH, behavior", "figure_refs": "Fig4A, Fig5D, Fig5F", "paper_refs": "R6", "paper_entries": [{"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}], "compact_label": "modulates · R6", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e26", "source": "Piriform_Oxtr", "target": "Appetitive_Social_Learning", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig5G, Fig5H", "paper_refs": "R6", "paper_entries": [{"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}], "compact_label": "modulates · R6", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e27", "source": "Piriform_Oxtr", "target": "Aversive_Social_Learning", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig6C, Fig6F", "paper_refs": "R6", "paper_entries": [{"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}], "compact_label": "modulates · R6", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e28", "source": "vCA1_PV", "target": "Social_Memory", "relation": "modulates", "sign": "unknown", "evidence": "behavior, opto", "figure_refs": "Fig2C, Fig3C, Fig3E", "paper_refs": "R17", "paper_entries": [{"ref_id": "R17", "label": "Deng et al, PNAS, 2019", "url": "https://doi.org/10.1073/pnas.1819133116"}], "compact_label": "modulates · R17", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e29", "source": "BNSTmv_OXT", "target": "BNSTam__anchor", "relation": "projects_to", "sign": "unknown", "evidence": "other", "figure_refs": "Fig3D, Fig3E", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "projects_to · R18", "category": "anatomical_unknown", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e30", "source": "OT_ligand", "target": "BNSTam_Oxtr", "relation": "modulates", "sign": "exc", "evidence": "ISH, behavior", "figure_refs": "Fig3J, Fig4C, Fig4E", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "modulates · R18", "category": "molecular", "source_endpoint": "64.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-68.0 -68.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e31", "source": "BNSTam_Oxtr", "target": "Social_Vigilance", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig4D, Fig4F", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "modulates · R18", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e32", "source": "BNSTam_Oxtr", "target": "Social_Approach", "relation": "modulates", "sign": "inh", "evidence": "behavior", "figure_refs": "Fig4C, Fig4E", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "modulates · R18", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e33", "source": "BNSTmv_OXT", "target": "Social_Vigilance", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig1F", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "modulates · R18", "category": "behavior", "source_endpoint": "103.0deg", "target_endpoint": "276.5deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e34", "source": "BNSTmv_OXT", "target": "Social_Approach", "relation": "modulates", "sign": "inh", "evidence": "behavior", "figure_refs": "Fig1E", "paper_refs": "R18", "paper_entries": [{"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}], "compact_label": "modulates · R18", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e35", "source": "D2R_Striatopallidal", "target": "Globus_Pallidus", "relation": "influences", "sign": "inh", "evidence": "other", "figure_refs": "Supplementary Fig6", "paper_refs": "R12", "paper_entries": [{"ref_id": "R12", "label": "Durieux et al, Nature Neuroscience, 2009", "url": "https://doi.org/10.1038/nn.2286"}], "compact_label": "influences · R12", "category": "anatomical_inh", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e36", "source": "D2R_Striatopallidal", "target": "Locomotion", "relation": "modulates", "sign": "inh", "evidence": "ablation, behavior", "figure_refs": "Fig2", "paper_refs": "R12", "paper_entries": [{"ref_id": "R12", "label": "Durieux et al, Nature Neuroscience, 2009", "url": "https://doi.org/10.1038/nn.2286"}], "compact_label": "modulates · R12", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e37", "source": "NAc_D2R_Striatopallidal", "target": "Drug_Reward_CPP", "relation": "modulates", "sign": "inh", "evidence": "ablation, behavior", "figure_refs": "Fig2F", "paper_refs": "R12", "paper_entries": [{"ref_id": "R12", "label": "Durieux et al, Nature Neuroscience, 2009", "url": "https://doi.org/10.1038/nn.2286"}], "compact_label": "modulates · R12", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e38", "source": "CeA__anchor", "target": "Predatory_Hunting", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig1G, Fig1P, Fig1Q", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "modulates · R1", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e39", "source": "CeA_PCRt", "target": "PCRt_VGat", "relation": "projects_to", "sign": "inh", "evidence": "other", "figure_refs": "Fig3D, Fig3I", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "projects_to · R1", "category": "anatomical_inh", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e40", "source": "PCRt_VGat", "target": "Biting_Attack", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig4C, Fig4H, Fig4K", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "modulates · R1", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e41", "source": "CeA_PCRt", "target": "Biting_Attack", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3F, Fig6D", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "modulates · R1", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e42", "source": "CeA_PAG", "target": "PAG_VGlut2", "relation": "projects_to", "sign": "inh", "evidence": "other", "figure_refs": "Fig5B, Fig5G", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "projects_to · R1", "category": "anatomical_inh", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e43", "source": "PAG_VGlut2", "target": "Prey_Pursuit", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig5H, Fig5I, Fig5J", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "modulates · R1", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e44", "source": "CeA_PAG", "target": "Prey_Pursuit", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig5D, Fig5E, Fig5F", "paper_refs": "R1", "paper_entries": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}], "compact_label": "modulates · R1", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e45", "source": "HypOT_Fear_Engram", "target": "CeL", "relation": "projects_to", "sign": "exc", "evidence": "IHC, other", "figure_refs": "Fig2B2, Fig3A2", "paper_refs": "R7", "paper_entries": [{"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}], "compact_label": "projects_to · R7", "category": "anatomical_exc", "source_endpoint": "70.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-51.0 -51.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e46", "source": "HypOT_Fear_Engram", "target": "Contextual_Fear_Freezing", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig2C2, Fig2D", "paper_refs": "R7", "paper_entries": [{"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}], "compact_label": "modulates · R7", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e47", "source": "HypOT_Fear_Engram", "target": "Fear_Extinction", "relation": "modulates", "sign": "exc", "evidence": "behavior, other", "figure_refs": "Fig4B2, Fig4C3", "paper_refs": "R7", "paper_entries": [{"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}], "compact_label": "modulates · R7", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e48", "source": "HypOT_Fear_Engram", "target": "OT_Glutamate_Shift", "relation": "modulates", "sign": "exc", "evidence": "IHC, other", "figure_refs": "Fig3A3, Fig5C3", "paper_refs": "R7", "paper_entries": [{"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}], "compact_label": "modulates · R7", "category": "molecular", "source_endpoint": "109.5deg", "target_endpoint": "270.0deg", "control_point_distances": "51.0 51.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e49", "source": "OT_Glutamate_Shift", "target": "CeM", "relation": "influences", "sign": "inh", "evidence": "other", "figure_refs": "Fig3C1, Fig3C2", "paper_refs": "R7", "paper_entries": [{"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}], "compact_label": "influences · R7", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e50", "source": "ACC_area24", "target": "Harm_Aversion", "relation": "modulates", "sign": "exc", "evidence": "behavior, other", "figure_refs": "Fig4C, Fig4D", "paper_refs": "R4", "paper_entries": [{"ref_id": "R4", "label": "Hernandez-Lallement et al, Current Biology, 2020", "url": "https://doi.org/10.1016/j.cub.2020.01.017"}], "compact_label": "modulates · R4", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e51", "source": "Shock_Preexposure", "target": "Harm_Aversion", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig3F, Fig3G, Fig3H", "paper_refs": "R4", "paper_entries": [{"ref_id": "R4", "label": "Hernandez-Lallement et al, Current Biology, 2020", "url": "https://doi.org/10.1016/j.cub.2020.01.017"}], "compact_label": "modulates · R4", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e52", "source": "Lever_Shock_Contingency", "target": "Harm_Aversion", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig2A, Fig2B", "paper_refs": "R4", "paper_entries": [{"ref_id": "R4", "label": "Hernandez-Lallement et al, Current Biology, 2020", "url": "https://doi.org/10.1016/j.cub.2020.01.017"}], "compact_label": "modulates · R4", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e53", "source": "vmPFC__anchor", "target": "OF_Escape", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3C, Fig3G, Fig3H, Fig3J, Fig3K", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "modulates · R13", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e54", "source": "vmPFC_ShockAct", "target": "OF_Freezing", "relation": "correlates_with", "sign": "inh", "evidence": "other", "figure_refs": "Fig5D, Fig5E, Fig5G", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "correlates_with · R13", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e55", "source": "vmPFC_ShockSupp", "target": "OF_Freezing", "relation": "correlates_with", "sign": "exc", "evidence": "other", "figure_refs": "Fig5D, Fig5E, Fig5G", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "correlates_with · R13", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e56", "source": "ACC_vmPFC", "target": "vmPFC__anchor", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig6A, Fig7A, Fig7B", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "projects_to · R13", "category": "anatomical_exc", "source_endpoint": "103.0deg", "target_endpoint": "263.5deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e57", "source": "ACC_vmPFC", "target": "vmPFC_ShockAct", "relation": "modulates", "sign": "exc", "evidence": "opto, other", "figure_refs": "Fig6D, Fig6G, Fig6H", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "modulates · R13", "category": "modulatory", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "modulatory"}, {"data": {"id": "e58", "source": "ACC_vmPFC", "target": "OF_Escape", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig7C, Fig7G, Fig7I, Fig7J", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "modulates · R13", "category": "behavior", "source_endpoint": "77.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e59", "source": "BLA_vmPFC", "target": "vmPFC__anchor", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig6I, Fig7D, Fig7E", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "projects_to · R13", "category": "anatomical_exc", "source_endpoint": "103.0deg", "target_endpoint": "276.5deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e60", "source": "BLA_vmPFC", "target": "vmPFC_ShockSupp", "relation": "modulates", "sign": "exc", "evidence": "opto, other", "figure_refs": "Fig6L, Fig6N, Fig6O, Fig6P", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "modulates · R13", "category": "modulatory", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "modulatory"}, {"data": {"id": "e61", "source": "BLA_vmPFC", "target": "OF_Escape", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig7F, Fig7H, Fig7I, Fig7K", "paper_refs": "R13", "paper_entries": [{"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}], "compact_label": "modulates · R13", "category": "behavior", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e62", "source": "Social_Interaction", "target": "PVH_OT", "relation": "correlates_with", "sign": "exc", "evidence": "behavior, other", "figure_refs": "Fig2B, Fig2H", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "correlates_with · R22", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "316.0deg", "control_point_distances": "120.0 120.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e63", "source": "PVH_OT", "target": "VTA_DA_NAcMedS", "relation": "projects_to", "sign": "exc", "evidence": "IHC, other", "figure_refs": "Fig1B, Fig1C", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "projects_to · R22", "category": "anatomical_exc", "source_endpoint": "135.5deg", "target_endpoint": "276.5deg", "control_point_distances": "119.0 119.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e64", "source": "OT_ligand", "target": "Social_Reward", "relation": "modulates", "sign": "exc", "evidence": "behavior, other", "figure_refs": "Fig1I, Fig1M", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "modulates · R22", "category": "behavior", "source_endpoint": "103.0deg", "target_endpoint": "263.5deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e65", "source": "PVH_OT", "target": "Social_Reward", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3B, Fig3E, Fig3K, Fig3M", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "modulates · R22", "category": "behavior", "source_endpoint": "122.5deg", "target_endpoint": "276.5deg", "control_point_distances": "85.0 85.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e66", "source": "PVH_OT", "target": "Social_Interaction", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3F, Fig3G, Fig3O, Fig3P", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "modulates · R22", "category": "behavior", "source_endpoint": "109.5deg", "target_endpoint": "270.0deg", "control_point_distances": "51.0 51.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e67", "source": "OT_ligand", "target": "VTA_DA_NAcMedS", "relation": "modulates", "sign": "exc", "evidence": "other", "figure_refs": "Fig4C, Fig4F, Fig4G, Fig4H, Fig4J", "paper_refs": "R22", "paper_entries": [{"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}], "compact_label": "modulates · R22", "category": "molecular", "source_endpoint": "116.0deg", "target_endpoint": "263.5deg", "control_point_distances": "68.0 68.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e68", "source": "Social_Isolation", "target": "Territory_Covering_Micturition", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig1A, Fig1B", "paper_refs": "R19", "paper_entries": [{"ref_id": "R19", "label": "Hyun et al, PNAS, 2021", "url": "https://doi.org/10.1073/pnas.2018078118"}], "compact_label": "modulates · R19", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e69", "source": "Urine_Stimulus", "target": "Territory_Covering_Micturition", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig1A, Fig1B", "paper_refs": "R19", "paper_entries": [{"ref_id": "R19", "label": "Hyun et al, PNAS, 2021", "url": "https://doi.org/10.1073/pnas.2018078118"}], "compact_label": "modulates · R19", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e70", "source": "LHA_PMC", "target": "PMC_Crh", "relation": "projects_to", "sign": "unknown", "evidence": "other", "figure_refs": "Fig2E, Fig5A, Fig5C", "paper_refs": "R19", "paper_entries": [{"ref_id": "R19", "label": "Hyun et al, PNAS, 2021", "url": "https://doi.org/10.1073/pnas.2018078118"}], "compact_label": "projects_to · R19", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e71", "source": "LHA__anchor", "target": "Territory_Covering_Micturition", "relation": "modulates", "sign": "inh", "evidence": "behavior, other", "figure_refs": "Fig5D, Fig5H", "paper_refs": "R19", "paper_entries": [{"ref_id": "R19", "label": "Hyun et al, PNAS, 2021", "url": "https://doi.org/10.1073/pnas.2018078118"}], "compact_label": "modulates · R19", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e72", "source": "PrRP", "target": "PVH_OT", "relation": "influences, modulates", "sign": "exc", "evidence": "IHC, behavior, lesion", "figure_refs": "Fig1A1, Fig1B1, Fig1C1, Fig1D1, Fig5C, Fig6A", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences/modulates · R20", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "316.0deg", "control_point_distances": "120.0 120.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e73", "source": "PrRP", "target": "SON_OXT", "relation": "influences, modulates", "sign": "exc", "evidence": "IHC, behavior, lesion, other", "figure_refs": "Fig1A2, Fig1B2, Fig1C2, Fig1D2, Fig3A, Fig3B, Fig5D, Fig6B", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences/modulates · R20", "category": "molecular", "source_endpoint": "116.0deg", "target_endpoint": "283.0deg", "control_point_distances": "68.0 68.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e74", "source": "PrRP", "target": "BNST_OXT", "relation": "influences, modulates", "sign": "exc", "evidence": "IHC, behavior, lesion", "figure_refs": "Fig1A3, Fig1B3, Fig1C3, Fig1D3, Fig5E, Fig6C", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences/modulates · R20", "category": "molecular", "source_endpoint": "64.0deg", "target_endpoint": "283.0deg", "control_point_distances": "-68.0 -68.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e75", "source": "PrRP", "target": "PVH_AVP", "relation": "modulates", "sign": "exc", "evidence": "IHC", "figure_refs": "Fig2A1, Fig2B1, Fig2C1, Fig2D1", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "modulates · R20", "category": "molecular", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e76", "source": "PrRP", "target": "SON_AVP", "relation": "influences, modulates", "sign": "exc", "evidence": "IHC, other", "figure_refs": "Fig2A2, Fig2B2, Fig2C2, Fig2D2, Fig3C, Fig3D", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences/modulates · R20", "category": "molecular", "source_endpoint": "103.0deg", "target_endpoint": "270.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e77", "source": "Food_Intake", "target": "PVH_OT", "relation": "correlates_with", "sign": "exc", "evidence": "IHC, behavior", "figure_refs": "Fig4D", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "correlates_with · R20", "category": "correlation", "source_endpoint": "90.0deg", "target_endpoint": "231.0deg", "control_point_distances": "-102.0 -102.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e78", "source": "Food_Intake", "target": "SON_OXT", "relation": "correlates_with", "sign": "exc", "evidence": "IHC, behavior", "figure_refs": "Fig4E", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "correlates_with · R20", "category": "correlation", "source_endpoint": "103.0deg", "target_endpoint": "270.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e79", "source": "Food_Intake", "target": "BNST_OXT", "relation": "correlates_with", "sign": "exc", "evidence": "IHC, behavior", "figure_refs": "Fig4F, Fig4G", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "correlates_with · R20", "category": "correlation", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e80", "source": "CCK", "target": "PVH_OT", "relation": "influences", "sign": "exc", "evidence": "IHC", "figure_refs": "Fig6A", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences · R20", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "224.0deg", "control_point_distances": "-120.0 -120.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e81", "source": "CCK", "target": "SON_OXT", "relation": "influences", "sign": "exc", "evidence": "IHC", "figure_refs": "Fig6B", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences · R20", "category": "molecular", "source_endpoint": "103.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e82", "source": "CCK", "target": "BNST_OXT", "relation": "influences", "sign": "exc", "evidence": "IHC", "figure_refs": "Fig6C", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences · R20", "category": "molecular", "source_endpoint": "77.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e83", "source": "Oxytocin_Receptor", "target": "Meal_Size", "relation": "influences", "sign": "inh", "evidence": "behavior, lesion", "figure_refs": "Fig7A", "paper_refs": "R20", "paper_entries": [{"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}], "compact_label": "influences · R20", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e84", "source": "vCA1__anchor", "target": "Social_Memory", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig1G, Fig1H, Fig1J, Fig1K", "paper_refs": "R21", "paper_entries": [{"ref_id": "R21", "label": "Okuyama et al, Science, 2016", "url": "https://doi.org/10.1126/science.aaf7003"}], "compact_label": "modulates · R21", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e85", "source": "vCA1_NAcSh", "target": "NAcSh", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig2B, Fig2C", "paper_refs": "R21", "paper_entries": [{"ref_id": "R21", "label": "Okuyama et al, Science, 2016", "url": "https://doi.org/10.1126/science.aaf7003"}], "compact_label": "projects_to · R21", "category": "anatomical_exc", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e86", "source": "vCA1_NAcSh", "target": "Social_Memory", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig1L, Fig1Q, Fig2G, Fig2K, Fig2M, Fig2N", "paper_refs": "R21", "paper_entries": [{"ref_id": "R21", "label": "Okuyama et al, Science, 2016", "url": "https://doi.org/10.1126/science.aaf7003"}], "compact_label": "modulates · R21", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e87", "source": "vHPC_mPFC", "target": "mPFC__anchor", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig1A, Fig1B, Fig1C", "paper_refs": "R8", "paper_entries": [{"ref_id": "R8", "label": "Padilla-Coreano et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.08.006"}], "compact_label": "projects_to · R8", "category": "anatomical_exc", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e88", "source": "Theta_8Hz_vHPC_mPFC", "target": "Avoidance_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig1D, Fig1F", "paper_refs": "R8", "paper_entries": [{"ref_id": "R8", "label": "Padilla-Coreano et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.08.006"}], "compact_label": "modulates · R8", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e89", "source": "Theta_8Hz_vHPC_mPFC", "target": "mPFC__anchor", "relation": "modulates", "sign": "exc", "evidence": "other", "figure_refs": "Fig2D, Fig3D, Fig3F, Fig5B, Fig6A", "paper_refs": "R8", "paper_entries": [{"ref_id": "R8", "label": "Padilla-Coreano et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.08.006"}], "compact_label": "modulates · R8", "category": "molecular", "source_endpoint": "96.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e90", "source": "MPA_CaMKII_vPAG", "target": "vPAG", "relation": "projects_to", "sign": "exc", "evidence": "opto, other, recording", "figure_refs": "Fig2A, Fig2F, Fig2G", "paper_refs": "R14", "paper_entries": [{"ref_id": "R14", "label": "Park et al, Nature Neuroscience, 2018", "url": "https://doi.org/10.1038/s41593-018-0072-x"}], "compact_label": "projects_to · R14", "category": "anatomical_exc", "source_endpoint": "109.5deg", "target_endpoint": "270.0deg", "control_point_distances": "51.0 51.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e91", "source": "MPA_CaMKII_vPAG", "target": "Object_Exploration", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig2B, Fig3G, Fig3H", "paper_refs": "R14", "paper_entries": [{"ref_id": "R14", "label": "Park et al, Nature Neuroscience, 2018", "url": "https://doi.org/10.1038/s41593-018-0072-x"}], "compact_label": "modulates · R14", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e92", "source": "MPA_CaMKII_vPAG", "target": "Moving_Target_Chasing", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig4E, Fig6G, Fig6H", "paper_refs": "R14", "paper_entries": [{"ref_id": "R14", "label": "Park et al, Nature Neuroscience, 2018", "url": "https://doi.org/10.1038/s41593-018-0072-x"}], "compact_label": "modulates · R14", "category": "behavior", "source_endpoint": "70.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-51.0 -51.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e93", "source": "MPA_CaMKII_vPAG", "target": "Prey_Hunting", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig5B, Fig5C, Fig5D, Fig5E", "paper_refs": "R14", "paper_entries": [{"ref_id": "R14", "label": "Park et al, Nature Neuroscience, 2018", "url": "https://doi.org/10.1038/s41593-018-0072-x"}], "compact_label": "modulates · R14", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e94", "source": "Cadaverine", "target": "Conspecific_Burial", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig2, Fig3", "paper_refs": "R25", "paper_entries": [{"ref_id": "R25", "label": "Pinel et al, Physiology & Behavior, 1981", "url": ""}], "compact_label": "modulates · R25", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e95", "source": "Putrescine", "target": "Conspecific_Burial", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig2, Fig3", "paper_refs": "R25", "paper_entries": [{"ref_id": "R25", "label": "Pinel et al, Physiology & Behavior, 1981", "url": ""}], "compact_label": "modulates · R25", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e96", "source": "Anosmia", "target": "Conspecific_Burial", "relation": "modulates", "sign": "inh", "evidence": "behavior", "figure_refs": "Fig5", "paper_refs": "R25", "paper_entries": [{"ref_id": "R25", "label": "Pinel et al, Physiology & Behavior, 1981", "url": ""}], "compact_label": "modulates · R25", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e97", "source": "OT_ligand", "target": "Parental_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig1D, Fig1F, Fig1G, Fig3E, Fig3H", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "modulates · R9", "category": "behavior", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e98", "source": "PVH_OT", "target": "Parental_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior, chemo", "figure_refs": "Fig2D, Fig2G", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "modulates · R9", "category": "behavior", "source_endpoint": "70.5deg", "target_endpoint": "283.0deg", "control_point_distances": "-51.0 -51.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e99", "source": "PVH_OT", "target": "Infanticide", "relation": "modulates", "sign": "inh", "evidence": "behavior, chemo", "figure_refs": "Fig2D, Fig2I, Fig3E", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "modulates · R9", "category": "behavior", "source_endpoint": "44.5deg", "target_endpoint": "283.0deg", "control_point_distances": "-119.0 -119.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e100", "source": "PVH_OT", "target": "MPNm_Calcr", "relation": "influences", "sign": "exc", "evidence": "ISH, chemo", "figure_refs": "Fig2J, Fig2L", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "influences · R9", "category": "anatomical_exc", "source_endpoint": "57.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-85.0 -85.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e101", "source": "PVH_OT", "target": "PeFA_Ucn3", "relation": "influences", "sign": "inh", "evidence": "ISH, chemo", "figure_refs": "Fig2K, Fig2M", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "influences · R9", "category": "anatomical_inh", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e102", "source": "LHA__anchor", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "rabies", "figure_refs": "Fig4D, Fig4E, Fig4G, Fig4H", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "83.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e103", "source": "MPNm__anchor", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "rabies", "figure_refs": "Fig4D, Fig4E, Fig4G, Fig4H", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e104", "source": "DMH__anchor", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "rabies", "figure_refs": "Fig4D", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "224.0deg", "control_point_distances": "-120.0 -120.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e105", "source": "PVH_AVP", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "rabies", "figure_refs": "SuppFig5H, SuppFig5I", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "309.0deg", "control_point_distances": "102.0 102.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e106", "source": "PVH_CRH", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "rabies", "figure_refs": "SuppFig5H, SuppFig5I", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "316.0deg", "control_point_distances": "120.0 120.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e107", "source": "LHA_vGluT2", "target": "PVH_OT", "relation": "synapses_on", "sign": "exc", "evidence": "ISH, opto, rabies, recording", "figure_refs": "Fig5A, Fig5B, Fig6B, Fig6C, Fig6F, Fig6G", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_exc", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e108", "source": "MPNm_vGluT2", "target": "PVH_OT", "relation": "synapses_on", "sign": "exc", "evidence": "opto, recording", "figure_refs": "Fig6B", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_exc", "source_endpoint": "90.0deg", "target_endpoint": "296.0deg", "control_point_distances": "68.0 68.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e109", "source": "DMH_vGluT2", "target": "PVH_OT", "relation": "synapses_on", "sign": "exc", "evidence": "opto, recording", "figure_refs": "Fig6B", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_exc", "source_endpoint": "90.0deg", "target_endpoint": "224.0deg", "control_point_distances": "-120.0 -120.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e110", "source": "LHA_Pmch", "target": "PVH_OT", "relation": "synapses_on", "sign": "unknown", "evidence": "ISH, rabies", "figure_refs": "Fig5E, Fig5F", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "synapses_on · R9", "category": "anatomical_unknown", "source_endpoint": "90.0deg", "target_endpoint": "244.0deg", "control_point_distances": "-68.0 -68.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_unknown"}, {"data": {"id": "e111", "source": "Parental_Behavior", "target": "LHA_vGluT2", "relation": "correlates_with", "sign": "exc", "evidence": "ISH, behavior", "figure_refs": "Fig7D, Fig7E", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "correlates_with · R9", "category": "correlation", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e112", "source": "Parental_Behavior", "target": "LHA_Pmch", "relation": "correlates_with", "sign": "exc", "evidence": "ISH, behavior", "figure_refs": "Fig7F, Fig7G", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "correlates_with · R9", "category": "correlation", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "correlation"}, {"data": {"id": "e113", "source": "LHA_vGluT2", "target": "Infanticide", "relation": "modulates", "sign": "inh", "evidence": "behavior, chemo", "figure_refs": "Fig7K, Fig7M", "paper_refs": "R9", "paper_entries": [{"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}], "compact_label": "modulates · R9", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e114", "source": "CeA_CRF", "target": "BNST_Oval", "relation": "projects_to", "sign": "inh", "evidence": "IHC, other", "figure_refs": "Fig2D, Fig2E", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "projects_to · R3", "category": "anatomical_inh", "source_endpoint": "90.0deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e115", "source": "CeA_CRF_GABA", "target": "Baseline_Anxiety", "relation": "modulates", "sign": "inh", "evidence": "behavior, other", "figure_refs": "Fig1B, Fig1C", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e116", "source": "CeA_CRF_GABA", "target": "BNST_Oval", "relation": "modulates", "sign": "inh", "evidence": "IHC, other", "figure_refs": "Fig2D, Fig2E", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "molecular", "source_endpoint": "83.5deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e117", "source": "CeA_CRF_CRF", "target": "Stimulated_Anxiety", "relation": "modulates", "sign": "exc", "evidence": "behavior, chemogenetic", "figure_refs": "Fig3B, Fig3C", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e118", "source": "CeA_CRF_Dyn", "target": "Stimulated_Anxiety", "relation": "modulates", "sign": "exc", "evidence": "behavior, chemogenetic", "figure_refs": "Fig3D, Fig3E", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "96.5deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e119", "source": "CeA_CRF_CRF", "target": "Fear_Learning", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig4C", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e120", "source": "CeA_CRF_Dyn", "target": "Fear_Learning", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Fig4C", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "270.0deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e121", "source": "CeA_CRF_NTS", "target": "Fear_Learning", "relation": "modulates", "sign": "inh", "evidence": "behavior", "figure_refs": "Fig4C", "paper_refs": "R3", "paper_entries": [{"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}], "compact_label": "modulates · R3", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "283.0deg", "control_point_distances": "34.0 34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e122", "source": "pPVT_OTR", "target": "Maternal_Crouching", "relation": "modulates", "sign": "exc", "evidence": "IHC, behavior", "figure_refs": "Fig2I, Fig2J, Fig3D", "paper_refs": "R5", "paper_entries": [{"ref_id": "R5", "label": "Watarai et al, Neuroscience Letters, 2020", "url": "https://doi.org/10.1016/j.neulet.2020.134761"}], "compact_label": "modulates · R5", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e123", "source": "MPA_Galanin", "target": "Parental_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior, opto", "figure_refs": "Fig3, Fig4, Fig5", "paper_refs": "R11", "paper_entries": [{"ref_id": "R11", "label": "Wu et al, Nature, 2014", "url": "https://doi.org/10.1038/nature13307"}], "compact_label": "modulates · R11", "category": "behavior", "source_endpoint": "103.0deg", "target_endpoint": "257.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e124", "source": "MPA_Galanin", "target": "Infanticide", "relation": "modulates", "sign": "inh", "evidence": "behavior, opto", "figure_refs": "Fig3, Fig5C, Fig5D, Fig5E, Fig5F", "paper_refs": "R11", "paper_entries": [{"ref_id": "R11", "label": "Wu et al, Nature, 2014", "url": "https://doi.org/10.1038/nature13307"}], "compact_label": "modulates · R11", "category": "behavior", "source_endpoint": "77.0deg", "target_endpoint": "270.0deg", "control_point_distances": "-34.0 -34.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e125", "source": "MPA_Galanin", "target": "Male_Mating_Behavior", "relation": "modulates", "sign": "exc", "evidence": "behavior", "figure_refs": "Extended Data Fig5G, Extended Data Fig5I, Fig4C", "paper_refs": "R11", "paper_entries": [{"ref_id": "R11", "label": "Wu et al, Nature, 2014", "url": "https://doi.org/10.1038/nature13307"}], "compact_label": "modulates · R11", "category": "behavior", "source_endpoint": "90.0deg", "target_endpoint": "270.0deg", "control_point_distances": "0.0 0.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e126", "source": "Juvenile_Social_Isolation", "target": "mPFC_pPVT", "relation": "modulates", "sign": "inh", "evidence": "behavior, other", "figure_refs": "Fig1E, Fig1G, Fig5A, Fig5F", "paper_refs": "R15", "paper_entries": [{"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}], "compact_label": "modulates · R15", "category": "molecular", "source_endpoint": "90.0deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "molecular"}, {"data": {"id": "e127", "source": "mPFC_pPVT", "target": "pPVT__anchor", "relation": "projects_to", "sign": "exc", "evidence": "other", "figure_refs": "Fig1A, Fig3A, Fig4A", "paper_refs": "R15", "paper_entries": [{"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}], "compact_label": "projects_to · R15", "category": "anatomical_exc", "source_endpoint": "96.5deg", "target_endpoint": "270.0deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_exc"}, {"data": {"id": "e128", "source": "mPFC_pPVT", "target": "Adult_Sociability", "relation": "modulates", "sign": "exc", "evidence": "behavior, chemo, opto", "figure_refs": "Fig2C, Fig3C, Fig4G, Fig7D, Fig8C", "paper_refs": "R15", "paper_entries": [{"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}], "compact_label": "modulates · R15", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}, {"data": {"id": "e129", "source": "mPFC_LTS_SST", "target": "mPFC_pPVT", "relation": "synapses_on", "sign": "inh", "evidence": "other", "figure_refs": "Fig6D, Fig6F", "paper_refs": "R15", "paper_entries": [{"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}], "compact_label": "synapses_on · R15", "category": "anatomical_inh", "source_endpoint": "96.5deg", "target_endpoint": "276.5deg", "control_point_distances": "17.0 17.0", "control_point_weights": "0.22 0.82"}, "classes": "anatomical_inh"}, {"data": {"id": "e130", "source": "mPFC_LTS_SST", "target": "Adult_Sociability", "relation": "modulates", "sign": "inh", "evidence": "behavior, chemo", "figure_refs": "Fig6G, Fig6J", "paper_refs": "R15", "paper_entries": [{"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}], "compact_label": "modulates · R15", "category": "behavior", "source_endpoint": "83.5deg", "target_endpoint": "263.5deg", "control_point_distances": "-17.0 -17.0", "control_point_weights": "0.22 0.82"}, "classes": "behavior"}], "references": [{"ref_id": "R1", "label": "Han et al, Cell, 2017", "url": "https://doi.org/10.1016/j.cell.2016.12.027"}, {"ref_id": "R2", "label": "Bayless et al, Cell, 2023", "url": "https://doi.org/10.1016/j.cell.2023.07.021"}, {"ref_id": "R3", "label": "Pomrenze et al, Cell Reports, 2019", "url": "https://doi.org/10.1016/j.celrep.2019.08.083"}, {"ref_id": "R4", "label": "Hernandez-Lallement et al, Current Biology, 2020", "url": "https://doi.org/10.1016/j.cub.2020.01.017"}, {"ref_id": "R5", "label": "Watarai et al, Neuroscience Letters, 2020", "url": "https://doi.org/10.1016/j.neulet.2020.134761"}, {"ref_id": "R6", "label": "Choe et al, Neuron, 2015", "url": "https://doi.org/10.1016/j.neuron.2015.06.022"}, {"ref_id": "R7", "label": "Hasan et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.04.029"}, {"ref_id": "R8", "label": "Padilla-Coreano et al, Neuron, 2019", "url": "https://doi.org/10.1016/j.neuron.2019.08.006"}, {"ref_id": "R9", "label": "Inada et al, Neuron, 2022", "url": "https://doi.org/10.1016/j.neuron.2022.03.033"}, {"ref_id": "R10", "label": "Chaudhury et al, Nature, 2013", "url": "https://doi.org/10.1038/nature11713"}, {"ref_id": "R11", "label": "Wu et al, Nature, 2014", "url": "https://doi.org/10.1038/nature13307"}, {"ref_id": "R12", "label": "Durieux et al, Nature Neuroscience, 2009", "url": "https://doi.org/10.1038/nn.2286"}, {"ref_id": "R13", "label": "Huang et al, Nature Communications, 2023", "url": "https://doi.org/10.1038/s41467-023-39081-5"}, {"ref_id": "R14", "label": "Park et al, Nature Neuroscience, 2018", "url": "https://doi.org/10.1038/s41593-018-0072-x"}, {"ref_id": "R15", "label": "Yamamuro et al, Nature Neuroscience, 2020", "url": "https://doi.org/10.1038/s41593-020-0695-6"}, {"ref_id": "R16", "label": "Brechbühl et al, PNAS, 2013", "url": "https://doi.org/10.1073/pnas.1214249110"}, {"ref_id": "R17", "label": "Deng et al, PNAS, 2019", "url": "https://doi.org/10.1073/pnas.1819133116"}, {"ref_id": "R18", "label": "Duque-Wilckens et al, PNAS, 2020", "url": "https://doi.org/10.1073/pnas.2011890117"}, {"ref_id": "R19", "label": "Hyun et al, PNAS, 2021", "url": "https://doi.org/10.1073/pnas.2018078118"}, {"ref_id": "R20", "label": "Yamashita et al, Journal of Neuroendocrinology, 2013", "url": "https://doi.org/10.1111/jne.12019"}, {"ref_id": "R21", "label": "Okuyama et al, Science, 2016", "url": "https://doi.org/10.1126/science.aaf7003"}, {"ref_id": "R22", "label": "Hung et al, Science, 2017", "url": "https://doi.org/10.1126/science.aan4994"}, {"ref_id": "R23", "label": "Berret et al, Science, 2019", "url": "https://doi.org/10.1126/science.aaw0474"}, {"ref_id": "R24", "label": "Bu et al, BMC Anesthesiology, 2022", "url": "https://doi.org/10.1186/s12871-022-01799-y"}, {"ref_id": "R25", "label": "Pinel et al, Physiology & Behavior, 1981", "url": ""}], "stats": {"papers": 25, "nodes": 151, "edges": 130}};
+
+    const detailEl = document.getElementById("details");
+    const referenceListEl = document.getElementById("reference-list");
+    const statsEl = document.getElementById("stats");
+    const searchEl = document.getElementById("search");
+    const nodeSuggestionsEl = document.getElementById("node-suggestions");
+    const layoutSelectEl = document.getElementById("layout-select");
+    const labelsBtn = document.getElementById("labels-btn");
+    const focusStatusEl = document.getElementById("focus-status");
+    const focusIncomingBtn = document.getElementById("focus-incoming-btn");
+    const focusBothBtn = document.getElementById("focus-both-btn");
+    const focusOutgoingBtn = document.getElementById("focus-outgoing-btn");
+    const focusOneBtn = document.getElementById("focus-1-btn");
+    const focusTwoBtn = document.getElementById("focus-2-btn");
+    const focusClearBtn = document.getElementById("focus-clear-btn");
+    const referenceFilterStatusEl = document.getElementById("reference-filter-status");
+    const referenceClearBtn = document.getElementById("reference-clear-btn");
+    const NODE_TYPE_ORDER = ['region', 'celltype', 'behavior', 'state', 'other'];
+    const NODE_TYPE_META = {
+      region: { label: 'Brain region', css: 'type-region', swatchBg: '#dbeafe', swatchBorder: '#1d4ed8' },
+      celltype: { label: 'Neuron or cell type', css: 'type-celltype', swatchBg: '#fee2e2', swatchBorder: '#dc2626' },
+      behavior: { label: 'Behavior', css: 'type-behavior', swatchBg: '#fef3c7', swatchBorder: '#d97706' },
+      state: { label: 'State or molecule', css: 'type-state', swatchBg: '#dcfce7', swatchBorder: '#16a34a' },
+      other: { label: 'Other', css: 'type-other', swatchBg: '#ede9fe', swatchBorder: '#7c3aed' }
+    };
+
+    function escapeHtml(value) {
+      return String(value ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#39;");
+    }
+
+    function renderReferenceLinks(entries) {
+      if (!entries || !entries.length) {
+        return '<span class="muted">No linked papers.</span>';
+      }
+      return '<ul class="paper-list">' + entries.map((entry) => {
+        const label = escapeHtml(entry.ref_id + ' - ' + entry.label);
+        if (entry.url) {
+          return '<li><a href="' + escapeHtml(entry.url) + '" target="_blank" rel="noreferrer">' + label + '</a></li>';
+        }
+        return '<li>' + label + '</li>';
+      }).join('') + '</ul>';
+    }
+
+    function setDetails(html) {
+      detailEl.innerHTML = html;
+    }
+
+    function sortNodesByLabel(nodes) {
+      return [...nodes].sort((left, right) => {
+        return String(left.data('label') || left.id()).localeCompare(String(right.data('label') || right.id()));
+      });
+    }
+
+    function nodeTypeMeta(type) {
+      return NODE_TYPE_META[type] || NODE_TYPE_META.other;
+    }
+
+    function focusSeedNode(node) {
+      const anchor = cy.getElementById(node.id() + '__anchor');
+      if (anchor && anchor.length) {
+        return anchor[0];
+      }
+      return node;
+    }
+
+    function directNeighborSummary(node) {
+      const seed = focusSeedNode(node);
+      const incoming = sortNodesByLabel(seed.incomers('node').filter((candidate) => candidate.id() !== seed.id()).toArray());
+      const outgoing = sortNodesByLabel(seed.outgoers('node').filter((candidate) => candidate.id() !== seed.id()).toArray());
+      return { seed, incoming, outgoing };
+    }
+
+    function renderNeighborChips(nodes, direction) {
+      if (!nodes.length) {
+        return '<div class="muted">None</div>';
+      }
+      const grouped = new Map();
+      NODE_TYPE_ORDER.forEach((type) => grouped.set(type, []));
+      nodes.forEach((neighbor) => {
+        const type = String(neighbor.data('type') || 'other');
+        const bucket = grouped.get(type) || grouped.get('other');
+        bucket.push(neighbor);
+      });
+
+      return NODE_TYPE_ORDER.map((type) => {
+        const bucket = sortNodesByLabel(grouped.get(type) || []);
+        if (!bucket.length) {
+          return '';
+        }
+        const meta = nodeTypeMeta(type);
+        return (
+          '<div class="neighbor-type-group">' +
+          '<div class="neighbor-type-title">' +
+          '<span class="swatch" style="background:' + escapeHtml(meta.swatchBg) + ';border-color:' + escapeHtml(meta.swatchBorder) + ';"></span>' +
+          '<span>' + escapeHtml(meta.label) + '</span>' +
+          '<span class="neighbor-count">' + escapeHtml(bucket.length) + '</span>' +
+          '</div>' +
+          '<div class="neighbor-list">' + bucket.map((neighbor) => {
+            return '<button type="button" class="neighbor-chip ' + escapeHtml(meta.css) + '" data-node-id="' + escapeHtml(neighbor.id()) + '" title="' + escapeHtml(direction + ' · ' + meta.label) + '">' + escapeHtml(neighbor.data('label') || neighbor.id()) + '</button>';
+          }).join('') + '</div>' +
+          '</div>'
+        );
+      }).join('');
+    }
+
+    function renderNodeDetails(node) {
+      const data = node.data();
+      const summary = directNeighborSummary(node);
+      const parentText = data.group_parent ? '<li><strong>Parent:</strong> ' + escapeHtml(data.group_parent) + '</li>' : '';
+      const notesText = data.notes ? '<li><strong>Notes:</strong> ' + escapeHtml(data.notes) + '</li>' : '';
+      setDetails(
+        '<h3>' + escapeHtml(data.label) + '</h3>' +
+        '<ul class="detail-list">' +
+        '<li><strong>ID:</strong> ' + escapeHtml(data.id) + '</li>' +
+        '<li><strong>Type:</strong> ' + escapeHtml(data.type) + '</li>' +
+        '<li><strong>Incoming:</strong> ' + escapeHtml(summary.incoming.length) + '</li>' +
+        '<li><strong>Outgoing:</strong> ' + escapeHtml(summary.outgoing.length) + '</li>' +
+        parentText +
+        notesText +
+        '</ul>' +
+        '<div class="neighbor-section">' +
+        '<div class="neighbor-header"><strong>Incoming Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.incoming.length) + '</span></div>' +
+        renderNeighborChips(summary.incoming, 'incoming') +
+        '</div>' +
+        '<div class="neighbor-section">' +
+        '<div class="neighbor-header"><strong>Outgoing Nodes</strong><span class="neighbor-count">' + escapeHtml(summary.outgoing.length) + '</span></div>' +
+        renderNeighborChips(summary.outgoing, 'outgoing') +
+        '</div>' +
+        '<p class="muted" style="margin-top:12px;">Click a chip to jump there. Use the Focus controls to isolate 1-hop or 2-hop neighborhoods.</p>'
+      );
+    }
+
+    function renderEdgeDetails(edge) {
+      const data = edge.data();
+      const relationText = data.relation || 'unknown';
+      const signText = data.sign || 'unknown';
+      const evidenceText = data.evidence || 'unknown';
+      const figureText = data.figure_refs || 'unknown';
+      setDetails(
+        '<h3>' + escapeHtml(data.source) + ' → ' + escapeHtml(data.target) + '</h3>' +
+        '<ul class="detail-list">' +
+        '<li><strong>Category:</strong> ' + escapeHtml(data.category) + '</li>' +
+        '<li><strong>Relation:</strong> ' + escapeHtml(relationText) + '</li>' +
+        '<li><strong>Sign:</strong> ' + escapeHtml(signText) + '</li>' +
+        '<li><strong>Evidence:</strong> ' + escapeHtml(evidenceText) + '</li>' +
+        '<li><strong>Figures:</strong> ' + escapeHtml(figureText) + '</li>' +
+        '<li><strong>Reference IDs:</strong> ' + escapeHtml(data.paper_refs || 'none') + '</li>' +
+        '</ul>' +
+        renderReferenceLinks(data.paper_entries)
+      );
+    }
+
+    function renderDefaultDetails() {
+      setDetails('Click a node or edge to inspect metadata and linked papers.');
+    }
+
+    function renderReferenceList() {
+      referenceListEl.innerHTML = GRAPH_DATA.references.map((entry) => {
+        const label = escapeHtml(entry.ref_id + ' - ' + entry.label);
+        const actionClass = entry.ref_id === referenceFilterId ? 'reference-action is-active' : 'reference-action';
+        const actionLabel = entry.ref_id === referenceFilterId ? 'Filtered' : 'Show map';
+        if (entry.url) {
+          return '<li class="reference-row"><a href="' + escapeHtml(entry.url) + '" target="_blank" rel="noreferrer">' + label + '</a><button type="button" class="' + actionClass + '" data-ref-id="' + escapeHtml(entry.ref_id) + '">' + actionLabel + '</button></li>';
+        }
+        return '<li class="reference-row"><span>' + label + '</span><button type="button" class="' + actionClass + '" data-ref-id="' + escapeHtml(entry.ref_id) + '">' + actionLabel + '</button></li>';
+      }).join('');
+    }
+
+    function renderStats() {
+      const stats = GRAPH_DATA.stats;
+      statsEl.innerHTML =
+        '<span class="chip">' + escapeHtml(stats.papers) + ' papers</span>' +
+        '<span class="chip">' + escapeHtml(stats.nodes) + ' nodes</span>' +
+        '<span class="chip">' + escapeHtml(stats.edges) + ' edges</span>';
+    }
+
+    function renderNodeSuggestions() {
+      const seen = new Set();
+      const options = sortNodesByLabel(
+        cy.nodes().filter((node) => !String(node.id()).endsWith('__anchor')).toArray()
+      ).map((node) => {
+        const label = String(node.data('label') || node.id());
+        const value = label === node.id() ? label : (label + ' (' + node.id() + ')');
+        if (seen.has(value)) {
+          return '';
+        }
+        seen.add(value);
+        return '<option value="' + escapeHtml(value) + '"></option>';
+      }).filter(Boolean);
+      nodeSuggestionsEl.innerHTML = options.join('');
+    }
+
+    function referenceEntryById(refId) {
+      return GRAPH_DATA.references.find((entry) => entry.ref_id === refId) || null;
+    }
+
+    function referenceElements(refId) {
+      const matchingEdges = cy.edges().filter((edge) => {
+        const entries = edge.data('paper_entries') || [];
+        return entries.some((entry) => entry.ref_id === refId);
+      });
+      const matchingNodes = addAncestorNodes(matchingEdges.connectedNodes());
+      return {
+        edges: matchingEdges,
+        nodes: matchingNodes,
+        elements: matchingNodes.add(matchingEdges)
+      };
+    }
+
+    function updateReferenceFilterStatus() {
+      if (!referenceFilterId) {
+        referenceFilterStatusEl.textContent = 'Showing all references.';
+        referenceClearBtn.classList.remove('is-active');
+        renderReferenceList();
+        return;
+      }
+      const entry = referenceEntryById(referenceFilterId);
+      referenceFilterStatusEl.textContent = entry
+        ? ('Showing only ' + entry.ref_id + ' • ' + entry.label)
+        : ('Showing only ' + referenceFilterId);
+      referenceClearBtn.classList.add('is-active');
+      renderReferenceList();
+    }
+
+    function applyReferenceFilter(refId, refit) {
+      referenceFilterId = refId || '';
+      cy.elements().removeClass('ref-faded');
+      if (referenceFilterId) {
+        const referenceView = referenceElements(referenceFilterId);
+        cy.elements().addClass('ref-faded');
+        referenceView.elements.removeClass('ref-faded');
+      }
+      updateReferenceFilterStatus();
+
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], false);
+          return;
+        }
+      }
+
+      if (searchEl.value.trim()) {
+        applySearch(searchEl.value);
+        return;
+      }
+
+      if (refit) {
+        if (referenceFilterId) {
+          const referenceView = referenceElements(referenceFilterId);
+          if (referenceView.elements.length) {
+            cy.animate({ fit: { eles: referenceView.elements, padding: 96 }, duration: 250 });
+            return;
+          }
+        }
+        fitGraph(64);
+      }
+    }
+
+    const cy = cytoscape({
+      container: document.getElementById("cy"),
+      elements: GRAPH_DATA.elements,
+      wheelSensitivity: 0.18,
+      style: [
+        {
+          selector: 'node',
+          style: {
+            'label': 'data(label)',
+            'text-wrap': 'wrap',
+            'text-max-width': 160,
+            'font-size': 13,
+            'font-family': 'Georgia, serif',
+            'text-valign': 'center',
+            'text-halign': 'center',
+            'min-zoomed-font-size': 10,
+            'color': '#111827',
+            'border-width': 4,
+            'background-color': '#ede9fe',
+            'border-color': '#7c3aed',
+            'shape': 'round-rectangle',
+            'padding': 12,
+            'width': 'label',
+            'height': 'label'
+          }
+        },
+        {
+          selector: 'node[type = "region"]',
+          style: {
+            'background-color': '#dbeafe',
+            'border-color': '#1d4ed8',
+            'padding': 16,
+            'font-size': 14
+          }
+        },
+        { selector: 'node[type = "celltype"]', style: { 'background-color': '#fee2e2', 'border-color': '#dc2626' } },
+        { selector: 'node[type = "behavior"]', style: { 'background-color': '#fef3c7', 'border-color': '#d97706' } },
+        { selector: 'node[type = "state"]', style: { 'background-color': '#dcfce7', 'border-color': '#16a34a' } },
+        { selector: 'node[type = "other"]', style: { 'background-color': '#ede9fe', 'border-color': '#7c3aed' } },
+        {
+          selector: 'node.container-node',
+          style: {
+            'background-opacity': 0.08,
+            'text-valign': 'top',
+            'text-halign': 'center',
+            'text-margin-y': -10,
+            'width': 'data(box_width)',
+            'height': 'data(box_height)',
+            'padding': 0,
+            'font-size': 15,
+            'border-width': 3,
+            'z-index': 0
+          }
+        },
+        {
+          selector: 'node.subnode',
+          style: {
+            'font-size': 12,
+            'padding': 10,
+            'border-style': 'solid',
+            'z-index': 10
+          }
+        },
+        {
+          selector: 'edge',
+          style: {
+            'curve-style': 'unbundled-bezier',
+            'edge-distances': 'endpoints',
+            'source-endpoint': 'data(source_endpoint)',
+            'target-endpoint': 'data(target_endpoint)',
+            'control-point-distances': 'data(control_point_distances)',
+            'control-point-weights': 'data(control_point_weights)',
+            'source-distance-from-node': '5px',
+            'target-distance-from-node': '5px',
+            'target-arrow-shape': 'triangle',
+            'target-arrow-color': '#7c3aed',
+            'line-color': '#7c3aed',
+            'width': 3.5,
+            'arrow-scale': 1.1,
+            'label': '',
+            'font-size': 11,
+            'font-family': 'Georgia, serif',
+            'min-zoomed-font-size': 9,
+            'color': '#374151',
+            'text-background-color': '#fffdf8',
+            'text-background-opacity': 0.9,
+            'text-background-padding': 2
+          }
+        },
+        { selector: 'edge.anatomical_exc', style: { 'line-color': '#dc2626', 'target-arrow-color': '#dc2626', 'width': 4 } },
+        { selector: 'edge.anatomical_inh', style: { 'line-color': '#2563eb', 'target-arrow-color': '#2563eb', 'target-arrow-shape': 'triangle-tee', 'width': 4, 'arrow-scale': 1.2 } },
+        { selector: 'edge.anatomical_unknown', style: { 'line-color': '#475569', 'target-arrow-color': '#475569', 'width': 3.5 } },
+        { selector: 'edge.behavior', style: { 'line-color': '#d97706', 'target-arrow-color': '#d97706', 'width': 4 } },
+        { selector: 'edge.molecular', style: { 'line-color': '#16a34a', 'target-arrow-color': '#16a34a', 'width': 4, 'target-arrow-shape': 'diamond' } },
+        { selector: 'edge.correlation', style: { 'line-color': '#6b7280', 'target-arrow-shape': 'none', 'line-style': 'dashed', 'width': 2.5 } },
+        { selector: 'edge.modulatory', style: { 'line-color': '#7c3aed', 'target-arrow-color': '#7c3aed', 'width': 3.5 } },
+        { selector: '.ref-faded', style: { 'opacity': 0.08, 'text-opacity': 0.08 } },
+        { selector: '.faded', style: { 'opacity': 0.12, 'text-opacity': 0.12 } },
+        { selector: '.highlighted', style: { 'overlay-opacity': 0.15, 'overlay-color': '#0f766e' } },
+        { selector: 'node.focus-root', style: { 'border-width': 6, 'border-color': '#0f766e', 'overlay-opacity': 0.14, 'overlay-color': '#0f766e' } },
+        { selector: 'node.focus-incoming', style: { 'overlay-opacity': 0.14, 'overlay-color': '#2563eb' } },
+        { selector: 'node.focus-outgoing', style: { 'overlay-opacity': 0.14, 'overlay-color': '#d97706' } },
+        { selector: 'node.focus-bidirectional', style: { 'overlay-opacity': 0.18, 'overlay-color': '#7c3aed' } },
+        { selector: 'edge.focus-edge', style: { 'opacity': 1, 'width': 5.5, 'arrow-scale': 1.2 } }
+      ],
+      layout: {
+        name: 'breadthfirst',
+        animate: false,
+        fit: true,
+        padding: 70,
+        directed: true,
+        spacingFactor: 1.4,
+        nodeDimensionsIncludeLabels: true
+      }
+    });
+
+    let edgeLabelsVisible = false;
+    let currentLayoutName = 'breadthfirst';
+    let resizeTimer = null;
+    let focusMode = 'both';
+    let focusHops = 1;
+    let focusNodeId = '';
+    let referenceFilterId = '';
+    const PAN_SCROLL_GAIN = 1.85;
+    const ZOOM_SCROLL_GAIN = 0.0090;
+
+    cy.userZoomingEnabled(false);
+
+    function clampZoomLevel(level) {
+      return Math.max(cy.minZoom(), Math.min(cy.maxZoom(), level));
+    }
+
+    function attachTrackpadNavigation() {
+      const container = cy.container();
+      if (!container) {
+        return;
+      }
+
+      container.addEventListener('wheel', (event) => {
+        const wantsZoom = event.ctrlKey || event.metaKey || event.altKey;
+        event.preventDefault();
+
+        if (wantsZoom) {
+          const deltaScale = event.deltaMode === 1 ? 15 : 1;
+          const rect = container.getBoundingClientRect();
+          const renderedPosition = {
+            x: event.clientX - rect.left,
+            y: event.clientY - rect.top
+          };
+          const nextZoom = clampZoomLevel(cy.zoom() * Math.exp(-(event.deltaY * deltaScale) * ZOOM_SCROLL_GAIN));
+          cy.zoom({
+            level: nextZoom,
+            renderedPosition
+          });
+          return;
+        }
+
+        cy.panBy({
+          x: -event.deltaX * PAN_SCROLL_GAIN,
+          y: -event.deltaY * PAN_SCROLL_GAIN
+        });
+      }, { passive: false });
+    }
+
+    attachTrackpadNavigation();
+
+    function syncViewportHeight() {
+      const actualHeight = Math.max(window.innerHeight || 0, 480);
+      document.documentElement.style.setProperty('--viewport-height', actualHeight + 'px');
+    }
+
+    function graphViewportBounds() {
+      const nodeBox = cy.nodes().boundingBox({ includeLabels: true });
+      const edgeBox = cy.edges().length
+        ? cy.edges().boundingBox({ includeLabels: false })
+        : nodeBox;
+
+      const extraLeft = Math.min(Math.max(nodeBox.x1 - edgeBox.x1, 0), 120);
+      const extraRight = Math.min(Math.max(edgeBox.x2 - nodeBox.x2, 0), 120);
+      const extraTop = Math.min(Math.max(nodeBox.y1 - edgeBox.y1, 0), 120);
+      const extraBottom = Math.min(Math.max(edgeBox.y2 - nodeBox.y2, 0), 180);
+      const baseMargin = 28;
+
+      return {
+        x1: nodeBox.x1 - baseMargin - extraLeft,
+        y1: nodeBox.y1 - baseMargin - extraTop,
+        x2: nodeBox.x2 + baseMargin + extraRight,
+        y2: nodeBox.y2 + baseMargin + extraBottom
+      };
+    }
+
+    function fitGraph(padding) {
+      cy.resize();
+      const bounds = graphViewportBounds();
+      const viewportPadding = padding ?? 64;
+      const container = cy.container();
+      if (!container) {
+        return;
+      }
+
+      const viewportWidth = Math.max(container.clientWidth, 1);
+      const viewportHeight = Math.max(container.clientHeight, 1);
+      const boundsWidth = Math.max(bounds.x2 - bounds.x1, 1);
+      const boundsHeight = Math.max(bounds.y2 - bounds.y1, 1);
+      const zoomX = Math.max((viewportWidth - viewportPadding * 2) / boundsWidth, 0.0001);
+      const zoomY = Math.max((viewportHeight - viewportPadding * 2) / boundsHeight, 0.0001);
+      const zoom = Math.min(zoomX, zoomY);
+      const centerX = (bounds.x1 + bounds.x2) / 2;
+      const centerY = (bounds.y1 + bounds.y2) / 2;
+      const pan = {
+        x: (viewportWidth / 2) - centerX * zoom,
+        y: (viewportHeight / 2) - centerY * zoom
+      };
+
+      cy.viewport({ zoom, pan });
+    }
+
+    function topLevelNodes() {
+      return cy.nodes().filter((node) => !node.data('group_parent'));
+    }
+
+    function childNodesOf(parentId) {
+      return sortChildren(cy.nodes().filter((candidate) => candidate.data('group_parent') === parentId).toArray());
+    }
+
+    function parentNodeOf(node) {
+      const parentId = node.data('group_parent');
+      if (!parentId) {
+        return null;
+      }
+      const parent = cy.getElementById(parentId);
+      return parent && parent.length ? parent[0] : null;
+    }
+
+    function nodeDepth(node) {
+      let depth = 0;
+      let current = node;
+      while (current && current.data('group_parent')) {
+        current = parentNodeOf(current);
+        if (!current) {
+          break;
+        }
+        depth += 1;
+        if (depth > 24) {
+          break;
+        }
+      }
+      return depth;
+    }
+
+    function topLevelId(node) {
+      let current = node;
+      let parent = parentNodeOf(current);
+      while (parent) {
+        current = parent;
+        parent = parentNodeOf(current);
+      }
+      return current.id();
+    }
+
+    function isContainerNode(node) {
+      return cy.nodes().some((candidate) => candidate.data('group_parent') === node.id());
+    }
+
+    function sortChildren(collection) {
+      return collection.sort((left, right) => {
+        return String(left.data('label') || left.id()).localeCompare(String(right.data('label') || right.id()));
+      });
+    }
+
+    function wrapTextLines(text, maxCharsPerLine) {
+      const content = String(text || '').trim();
+      if (!content) {
+        return [''];
+      }
+
+      const words = content.split(/\s+/).filter(Boolean);
+      if (!words.length) {
+        return [content];
+      }
+
+      const lines = [];
+      let current = '';
+      words.forEach((word) => {
+        if (!current.length) {
+          current = word;
+          return;
+        }
+
+        if ((current + ' ' + word).length <= maxCharsPerLine) {
+          current += ' ' + word;
+          return;
+        }
+
+        lines.push(current);
+        current = word;
+      });
+
+      if (current.length) {
+        lines.push(current);
+      }
+      return lines.length ? lines : [content];
+    }
+
+    function estimateLabelDimensions(label, options) {
+      const fontSize = options.fontSize || 13;
+      const maxCharsPerLine = options.maxCharsPerLine || 20;
+      const minWidth = options.minWidth || 150;
+      const minHeight = options.minHeight || 54;
+      const horizontalPadding = options.horizontalPadding || 26;
+      const verticalPadding = options.verticalPadding || 18;
+      const lineHeight = fontSize * 1.35;
+      const lines = wrapTextLines(label, maxCharsPerLine);
+      const longest = lines.reduce((value, line) => Math.max(value, line.length), 0);
+      const width = Math.max(minWidth, (longest * fontSize * 0.64) + horizontalPadding * 2);
+      const height = Math.max(minHeight, (lines.length * lineHeight) + verticalPadding * 2);
+      return { width, height, lines };
+    }
+
+    function estimateNodeDimensions(node, mode) {
+      if (mode === 'container-title') {
+        return estimateLabelDimensions(node.data('label') || node.id(), {
+          fontSize: 15,
+          maxCharsPerLine: 22,
+          minWidth: 220,
+          minHeight: 52,
+          horizontalPadding: 30,
+          verticalPadding: 16
+        });
+      }
+
+      if (mode === 'child') {
+        return estimateLabelDimensions(node.data('label') || node.id(), {
+          fontSize: 12,
+          maxCharsPerLine: 22,
+          minWidth: 150,
+          minHeight: 56,
+          horizontalPadding: 20,
+          verticalPadding: 14
+        });
+      }
+
+      const isRegion = node.data('type') === 'region';
+      return estimateLabelDimensions(node.data('label') || node.id(), {
+        fontSize: isRegion ? 14 : 13,
+        maxCharsPerLine: isRegion ? 22 : 20,
+        minWidth: isRegion ? 190 : 170,
+        minHeight: isRegion ? 84 : 74,
+        horizontalPadding: isRegion ? 28 : 24,
+        verticalPadding: isRegion ? 20 : 18
+      });
+    }
+
+    function chooseChildGrid(childNodes) {
+      const childDims = childNodes.map((childNode) => estimateNodeDimensions(childNode, 'child'));
+      const count = childDims.length;
+      if (!count) {
+        return null;
+      }
+
+      let best = null;
+      const maxColumns = Math.min(3, count);
+      for (let columns = 1; columns <= maxColumns; columns += 1) {
+        const rows = Math.ceil(count / columns);
+        const widestChild = childDims.reduce((value, dims) => Math.max(value, dims.width), 0);
+        const tallestChild = childDims.reduce((value, dims) => Math.max(value, dims.height), 0);
+        const gapX = widestChild > 240 ? 18 : 24;
+        const gapY = 18;
+        const contentWidth = columns * widestChild + (columns - 1) * gapX;
+        const contentHeight = rows * tallestChild + (rows - 1) * gapY;
+        const aspect = contentWidth / Math.max(contentHeight, 1);
+        const score = Math.abs(aspect - 1.6) * 140 + contentWidth * 0.12 + contentHeight;
+        if (!best || score < best.score) {
+          best = {
+            columns,
+            rows,
+            cellWidth: widestChild,
+            cellHeight: tallestChild,
+            gapX,
+            gapY,
+            contentWidth,
+            contentHeight,
+            score
+          };
+        }
+      }
+
+      return best;
+    }
+
+    function updateContainerMetrics() {
+      cy.nodes().removeClass('container-node subnode');
+      cy.nodes().forEach((node) => {
+        node.removeData('box_width');
+        node.removeData('box_height');
+        node.removeData('title_height');
+        node.removeData('child_columns');
+        node.removeData('child_rows');
+        node.removeData('child_cell_width');
+        node.removeData('child_cell_height');
+        node.removeData('child_gap_x');
+        node.removeData('child_gap_y');
+      });
+
+      cy.nodes()
+        .sort((left, right) => nodeDepth(left) - nodeDepth(right))
+        .forEach((node) => {
+        const children = childNodesOf(node.id());
+        if (!children.length) {
+          return;
+        }
+
+        const titleDims = estimateNodeDimensions(node, 'container-title');
+        const grid = chooseChildGrid(children);
+        const framePaddingX = 34;
+        const framePaddingBottom = 28;
+        const titleHeight = titleDims.height + 18;
+        const boxWidth = Math.max(titleDims.width + 44, grid.contentWidth + framePaddingX * 2);
+        const boxHeight = titleHeight + grid.contentHeight + framePaddingBottom + 26;
+        node.data('box_width', boxWidth);
+        node.data('box_height', boxHeight);
+        node.data('title_height', titleHeight);
+        node.data('child_columns', grid.columns);
+        node.data('child_rows', grid.rows);
+        node.data('child_cell_width', grid.cellWidth);
+        node.data('child_cell_height', grid.cellHeight);
+        node.data('child_gap_x', grid.gapX);
+        node.data('child_gap_y', grid.gapY);
+        node.addClass('container-node');
+        children.forEach((childNode) => childNode.addClass('subnode'));
+      });
+    }
+
+    function buildCollapsedElements() {
+      const nodes = topLevelNodes().map((node) => ({
+        data: {
+          id: node.id(),
+          layout_width: node.hasClass('container-node') ? node.data('box_width') : estimateNodeDimensions(node, 'top').width,
+          layout_height: node.hasClass('container-node') ? node.data('box_height') : estimateNodeDimensions(node, 'top').height
+        }
+      }));
+      const edgeCounts = new Map();
+
+      cy.edges().forEach((edge) => {
+        if (edge.hasClass('layout_helper')) {
+          return;
+        }
+        const sourceRoot = topLevelId(edge.source());
+        const targetRoot = topLevelId(edge.target());
+        if (sourceRoot === targetRoot) {
+          return;
+        }
+
+        const key = sourceRoot + '||' + targetRoot;
+        edgeCounts.set(key, (edgeCounts.get(key) || 0) + 1);
+      });
+
+      const edges = Array.from(edgeCounts.entries()).map(([key, weight], index) => {
+        const [source, target] = key.split('||');
+        return {
+          data: {
+            id: 'collapsed_' + index,
+            source,
+            target,
+            weight
+          }
+        };
+      });
+
+      return { nodes, edges };
+    }
+
+    function resolveRootOverlaps(rootPositions) {
+      const entries = topLevelNodes().map((node) => ({
+        id: node.id(),
+        x: (rootPositions.get(node.id()) || node.position()).x,
+        y: (rootPositions.get(node.id()) || node.position()).y,
+        width: node.hasClass('container-node') ? node.data('box_width') : estimateNodeDimensions(node, 'top').width,
+        height: node.hasClass('container-node') ? node.data('box_height') : estimateNodeDimensions(node, 'top').height
+      }));
+
+      const marginX = 96;
+      const marginY = 92;
+      for (let iteration = 0; iteration < 260; iteration += 1) {
+        let moved = false;
+        for (let leftIndex = 0; leftIndex < entries.length; leftIndex += 1) {
+          for (let rightIndex = leftIndex + 1; rightIndex < entries.length; rightIndex += 1) {
+            const left = entries[leftIndex];
+            const right = entries[rightIndex];
+            const deltaX = right.x - left.x;
+            const deltaY = right.y - left.y;
+            const overlapX = ((left.width + right.width) / 2) + marginX - Math.abs(deltaX);
+            const overlapY = ((left.height + right.height) / 2) + marginY - Math.abs(deltaY);
+            if (overlapX <= 0 || overlapY <= 0) {
+              continue;
+            }
+
+            moved = true;
+            if (overlapX < overlapY) {
+              const direction = deltaX === 0 ? (leftIndex % 2 === 0 ? -1 : 1) : Math.sign(deltaX);
+              const shift = (overlapX / 2) + 6;
+              left.x -= direction * shift;
+              right.x += direction * shift;
+            } else {
+              const direction = deltaY === 0 ? (leftIndex % 2 === 0 ? -1 : 1) : Math.sign(deltaY);
+              const shift = (overlapY / 2) + 6;
+              left.y -= direction * shift;
+              right.y += direction * shift;
+            }
+          }
+        }
+
+        if (!moved) {
+          break;
+        }
+      }
+
+      entries.forEach((entry) => {
+        rootPositions.set(entry.id, { x: entry.x, y: entry.y });
+      });
+    }
+
+    function assignCollapsedRanks(collapsed, rootPositions) {
+      const nodes = collapsed.nodes.map((entry) => entry.data.id);
+      const outgoing = new Map(nodes.map((id) => [id, []]));
+      const indegree = new Map(nodes.map((id) => [id, 0]));
+      const rank = new Map(nodes.map((id) => [id, 0]));
+
+      collapsed.edges.forEach((entry) => {
+        const source = entry.data.source;
+        const target = entry.data.target;
+        if (!outgoing.has(source)) {
+          outgoing.set(source, []);
+        }
+        outgoing.get(source).push(target);
+        indegree.set(target, (indegree.get(target) || 0) + 1);
+      });
+
+      const sortedRoots = nodes
+        .filter((id) => (indegree.get(id) || 0) === 0)
+        .sort((left, right) => {
+          const leftPos = rootPositions.get(left) || { x: 0, y: 0 };
+          const rightPos = rootPositions.get(right) || { x: 0, y: 0 };
+          return leftPos.y - rightPos.y || leftPos.x - rightPos.x;
+        });
+
+      const queue = [...sortedRoots];
+      const pending = new Map(indegree);
+      while (queue.length) {
+        const current = queue.shift();
+        (outgoing.get(current) || []).forEach((target) => {
+          rank.set(target, Math.max(rank.get(target) || 0, (rank.get(current) || 0) + 1));
+          pending.set(target, (pending.get(target) || 0) - 1);
+          if ((pending.get(target) || 0) === 0) {
+            queue.push(target);
+          }
+        });
+      }
+
+      nodes
+        .filter((id) => (pending.get(id) || 0) > 0)
+        .sort((left, right) => {
+          const leftPos = rootPositions.get(left) || { x: 0, y: 0 };
+          const rightPos = rootPositions.get(right) || { x: 0, y: 0 };
+          return leftPos.x - rightPos.x || leftPos.y - rightPos.y;
+        })
+        .forEach((id, index) => {
+          rank.set(id, Math.max(rank.get(id) || 0, index));
+        });
+
+      return rank;
+    }
+
+    function packRootPositions(collapsed, rootPositions) {
+      const rankMap = assignCollapsedRanks(collapsed, rootPositions);
+      const orderedEntries = topLevelNodes().map((node) => {
+        const dimensions = node.hasClass('container-node')
+          ? { width: node.data('box_width'), height: node.data('box_height') }
+          : estimateNodeDimensions(node, 'top');
+        const rawPosition = rootPositions.get(node.id()) || node.position();
+        return {
+          id: node.id(),
+          label: String(node.data('label') || node.id()),
+          width: dimensions.width,
+          height: dimensions.height,
+          rawX: rawPosition.x,
+          rawY: rawPosition.y,
+          rank: rankMap.get(node.id()) || 0
+        };
+      }).sort((left, right) => {
+        return left.rank - right.rank
+          || left.rawY - right.rawY
+          || left.rawX - right.rawX
+          || left.label.localeCompare(right.label);
+      });
+
+      const maxColumns = Math.max(3, Math.min(6, Math.ceil(Math.sqrt(orderedEntries.length || 1))));
+      const rowGap = 110;
+      const columnGap = 190;
+      const rows = [];
+      for (let index = 0; index < orderedEntries.length; index += maxColumns) {
+        rows.push(orderedEntries.slice(index, index + maxColumns));
+      }
+
+      const columnWidths = [];
+      rows.forEach((row) => {
+        row.forEach((entry, index) => {
+          columnWidths[index] = Math.max(columnWidths[index] || 0, entry.width);
+        });
+      });
+
+      const rowHeights = rows.map((row) => row.reduce((value, entry) => Math.max(value, entry.height), 0));
+      const totalWidth = columnWidths.reduce((value, width) => value + width, 0)
+        + Math.max(columnWidths.length - 1, 0) * columnGap;
+      const totalHeight = rowHeights.reduce((value, height) => value + height, 0)
+        + Math.max(rowHeights.length - 1, 0) * rowGap;
+
+      const packed = new Map();
+      let currentY = -totalHeight / 2;
+      rows.forEach((row, rowIndex) => {
+        const rowHeight = rowHeights[rowIndex];
+        let currentX = -totalWidth / 2;
+        row.forEach((entry, colIndex) => {
+          const columnWidth = columnWidths[colIndex];
+          packed.set(entry.id, {
+            x: currentX + columnWidth / 2,
+            y: currentY + rowHeight / 2
+          });
+          currentX += columnWidth + columnGap;
+        });
+        currentY += rowHeight + rowGap;
+      });
+
+      return packed;
+    }
+
+    function collapsedLayoutOptions(name) {
+      const common = {
+        animate: false,
+        fit: false,
+        padding: 90,
+        nodeDimensionsIncludeLabels: true
+      };
+
+      if (name === 'cose') {
+        return {
+          ...common,
+          name: 'cose',
+          randomize: false,
+          componentSpacing: 160,
+          idealEdgeLength: 210,
+          edgeElasticity: 0.28,
+          nodeRepulsion: 24000
+        };
+      }
+
+      if (name === 'concentric') {
+        return {
+          ...common,
+          name: 'concentric',
+          minNodeSpacing: 90,
+          levelWidth: () => 1
+        };
+      }
+
+      return {
+        ...common,
+        name: 'breadthfirst',
+        directed: true,
+        circle: false,
+        spacingFactor: 1.9
+      };
+    }
+
+    function positionChildrenInsideParents(animate, rootPositions) {
+      cy.nodes()
+        .filter((node) => node.hasClass('container-node'))
+        .sort((left, right) => nodeDepth(left) - nodeDepth(right))
+        .forEach((parentNode) => {
+        const children = childNodesOf(parentNode.id());
+        if (!children.length) {
+          return;
+        }
+
+        const parentPos = rootPositions.get(parentNode.id()) || parentNode.position();
+        const columns = parentNode.data('child_columns') || 1;
+        const totalRows = parentNode.data('child_rows') || children.length;
+        const boxWidth = parentNode.data('box_width') || 280;
+        const boxHeight = parentNode.data('box_height') || 170;
+        const titleHeight = parentNode.data('title_height') || 74;
+        const cellWidth = parentNode.data('child_cell_width') || 170;
+        const cellHeight = parentNode.data('child_cell_height') || 60;
+        const gapX = parentNode.data('child_gap_x') || 24;
+        const gapY = parentNode.data('child_gap_y') || 18;
+        const contentWidth = columns * cellWidth + Math.max(columns - 1, 0) * gapX;
+        const startX = parentPos.x - (contentWidth / 2) + (cellWidth / 2);
+        const startY = parentPos.y - (boxHeight / 2) + titleHeight + (cellHeight / 2);
+        const maxY = parentPos.y + (boxHeight / 2) - 26 - (cellHeight / 2);
+
+        children.forEach((childNode, index) => {
+          const row = Math.floor(index / columns);
+          const col = index % columns;
+          const targetX = startX + col * (cellWidth + gapX);
+          const unclampedY = startY + row * (cellHeight + gapY);
+          const targetY = Math.min(unclampedY, maxY);
+          if (animate) {
+            childNode.animate({ position: { x: targetX, y: targetY } }, { duration: 260 });
+          } else {
+            childNode.position({ x: targetX, y: targetY });
+          }
+        });
+      });
+    }
+
+    function applyCompoundLayout(name, animate) {
+      currentLayoutName = name;
+      updateContainerMetrics();
+      const collapsed = buildCollapsedElements();
+      const layoutCy = cytoscape({
+        headless: true,
+        styleEnabled: true,
+        elements: [...collapsed.nodes, ...collapsed.edges],
+        style: [
+          {
+            selector: 'node',
+            style: {
+              'width': 'data(layout_width)',
+              'height': 'data(layout_height)'
+            }
+          }
+        ]
+      });
+
+      const layout = layoutCy.layout(collapsedLayoutOptions(name));
+      layout.one('layoutstop', () => {
+        let rootPositions = new Map();
+        layoutCy.nodes().forEach((node) => {
+          rootPositions.set(node.id(), { x: node.position('x'), y: node.position('y') });
+        });
+        layoutCy.destroy();
+        rootPositions = packRootPositions(collapsed, rootPositions);
+        resolveRootOverlaps(rootPositions);
+
+        topLevelNodes().forEach((node) => {
+          const position = rootPositions.get(node.id());
+          if (!position) {
+            return;
+          }
+          if (animate) {
+            node.animate({ position }, { duration: 260 });
+          } else {
+            node.position(position);
+          }
+        });
+
+        positionChildrenInsideParents(animate, rootPositions);
+
+        if (animate) {
+          setTimeout(() => fitGraph(64), 280);
+        } else {
+          fitGraph(64);
+        }
+      });
+      layout.run();
+    }
+
+    function applyLayout(name) {
+      applyCompoundLayout(name, true);
+    }
+
+    function updateEdgeLabels() {
+      cy.style().selector('edge').style('label', edgeLabelsVisible ? 'data(compact_label)' : '').update();
+      labelsBtn.textContent = edgeLabelsVisible ? 'Hide edge labels' : 'Show edge labels';
+    }
+
+    function clearSearchHighlight() {
+      cy.elements().removeClass('faded highlighted focus-root focus-incoming focus-outgoing focus-bidirectional focus-edge');
+    }
+
+    function collectionFromNodes(nodes) {
+      return nodes.reduce((collection, node) => collection.add(node), cy.collection());
+    }
+
+    function addAncestorNodes(collection) {
+      let expanded = collection;
+      collection.nodes().forEach((node) => {
+        let current = parentNodeOf(node);
+        let guard = 0;
+        while (current && guard < 24) {
+          expanded = expanded.add(current);
+          current = parentNodeOf(current);
+          guard += 1;
+        }
+      });
+      return expanded;
+    }
+
+    function uniqueNodes(nodes) {
+      const byId = new Map();
+      nodes.forEach((node) => {
+        byId.set(node.id(), node);
+      });
+      return sortNodesByLabel(Array.from(byId.values()));
+    }
+
+    function focusTraversalStep(node, direction) {
+      if (direction === 'incoming') {
+        return {
+          nodes: node.incomers('node').filter((candidate) => candidate.id() !== node.id()),
+          edges: node.incomers('edge')
+        };
+      }
+
+      if (direction === 'outgoing') {
+        return {
+          nodes: node.outgoers('node').filter((candidate) => candidate.id() !== node.id()),
+          edges: node.outgoers('edge')
+        };
+      }
+
+      return {
+        nodes: node.neighborhood('node').filter((candidate) => candidate.id() !== node.id()),
+        edges: node.connectedEdges()
+      };
+    }
+
+    function collectFocusNeighborhood(node, mode, hops) {
+      const seed = focusSeedNode(node);
+      let visibleNodes = cy.collection().add(node).add(seed);
+      let visibleEdges = cy.collection();
+      const incomingNodes = [];
+      const outgoingNodes = [];
+      let frontier = [seed];
+      const visited = new Set([seed.id()]);
+      const directions = mode === 'both' ? ['incoming', 'outgoing'] : [mode];
+
+      for (let depth = 0; depth < hops; depth += 1) {
+        const next = [];
+        frontier.forEach((frontNode) => {
+          directions.forEach((direction) => {
+            const step = focusTraversalStep(frontNode, direction);
+            visibleEdges = visibleEdges.add(step.edges);
+            step.nodes.forEach((neighbor) => {
+              visibleNodes = visibleNodes.add(neighbor);
+              if (direction === 'incoming') {
+                incomingNodes.push(neighbor);
+              } else if (direction === 'outgoing') {
+                outgoingNodes.push(neighbor);
+              }
+              if (!visited.has(neighbor.id())) {
+                visited.add(neighbor.id());
+                next.push(neighbor);
+              }
+            });
+          });
+        });
+        frontier = next;
+        if (!frontier.length) {
+          break;
+        }
+      }
+
+      const uniqueIncoming = uniqueNodes(incomingNodes);
+      const uniqueOutgoing = uniqueNodes(outgoingNodes);
+      const highlightNodes = addAncestorNodes(visibleNodes);
+      return {
+        seed,
+        highlightNodes,
+        highlightEdges: visibleEdges,
+        highlight: highlightNodes.add(visibleEdges),
+        incomingNodes: uniqueIncoming,
+        outgoingNodes: uniqueOutgoing
+      };
+    }
+
+    function updateFocusButtons() {
+      focusIncomingBtn.classList.toggle('is-active', focusMode === 'incoming');
+      focusBothBtn.classList.toggle('is-active', focusMode === 'both');
+      focusOutgoingBtn.classList.toggle('is-active', focusMode === 'outgoing');
+      focusOneBtn.classList.toggle('is-active', focusHops === 1);
+      focusTwoBtn.classList.toggle('is-active', focusHops === 2);
+    }
+
+    function updateFocusStatus(result) {
+      if (!focusNodeId) {
+        focusStatusEl.textContent = 'Select a node to trace its incoming and outgoing links.';
+        updateFocusButtons();
+        return;
+      }
+
+      const focusNode = cy.getElementById(focusNodeId);
+      if (!focusNode || !focusNode.length) {
+        focusNodeId = '';
+        focusStatusEl.textContent = 'Select a node to trace its incoming and outgoing links.';
+        updateFocusButtons();
+        return;
+      }
+
+      const label = String(focusNode[0].data('label') || focusNodeId);
+      const summary = result || collectFocusNeighborhood(focusNode[0], focusMode, focusHops);
+      const connectedCount = new Set([
+        ...summary.incomingNodes.map((node) => node.id()),
+        ...summary.outgoingNodes.map((node) => node.id())
+      ]).size;
+      const modeLabel = focusMode === 'both' ? 'incoming + outgoing' : focusMode;
+      focusStatusEl.textContent = label + ' • ' + modeLabel + ' • ' + focusHops + '-hop • ' + connectedCount + ' linked nodes';
+      updateFocusButtons();
+    }
+
+    function clearFocusState(refit) {
+      focusNodeId = '';
+      clearSearchHighlight();
+      updateFocusStatus();
+      if (refit) {
+        if (referenceFilterId) {
+          const referenceView = referenceElements(referenceFilterId);
+          if (referenceView.elements.length) {
+            cy.animate({ fit: { eles: referenceView.elements, padding: 96 }, duration: 250 });
+            return;
+          }
+        }
+        fitGraph(64);
+      }
+    }
+
+    function applyNodeFocus(node, animate) {
+      const result = collectFocusNeighborhood(node, focusMode, focusHops);
+      clearSearchHighlight();
+      cy.elements().addClass('faded');
+      result.highlight.removeClass('faded');
+      result.highlightEdges.addClass('focus-edge');
+      node.addClass('focus-root');
+      result.seed.addClass('focus-root');
+
+      const incomingIds = new Set(result.incomingNodes.map((neighbor) => neighbor.id()));
+      const outgoingIds = new Set(result.outgoingNodes.map((neighbor) => neighbor.id()));
+      result.incomingNodes.forEach((neighbor) => {
+        if (outgoingIds.has(neighbor.id())) {
+          neighbor.addClass('focus-bidirectional');
+        } else {
+          neighbor.addClass('focus-incoming');
+        }
+      });
+      result.outgoingNodes.forEach((neighbor) => {
+        if (incomingIds.has(neighbor.id())) {
+          neighbor.addClass('focus-bidirectional');
+        } else {
+          neighbor.addClass('focus-outgoing');
+        }
+      });
+
+      focusNodeId = node.id();
+      updateFocusStatus(result);
+      renderNodeDetails(node);
+      if (animate) {
+        cy.animate({ fit: { eles: result.highlight, padding: 112 }, duration: 260 });
+      }
+    }
+
+    function applySearch(query) {
+      clearSearchHighlight();
+      focusNodeId = '';
+      updateFocusStatus();
+      if (!query) {
+        if (referenceFilterId) {
+          const referenceView = referenceElements(referenceFilterId);
+          if (referenceView.elements.length) {
+            cy.animate({ fit: { eles: referenceView.elements, padding: 96 }, duration: 250 });
+            return;
+          }
+        }
+        fitGraph(64);
+        return;
+      }
+      const normalized = query.trim().toLowerCase();
+      const matches = cy.nodes().filter((node) => {
+        const label = String(node.data('label') || '').toLowerCase();
+        const id = String(node.id() || '').toLowerCase();
+        return label.includes(normalized) || id.includes(normalized);
+      });
+
+      if (!matches.length) {
+        cy.elements().addClass('faded');
+        return;
+      }
+
+      cy.elements().addClass('faded');
+      const neighborhood = matches.closedNeighborhood();
+      neighborhood.removeClass('faded').addClass('highlighted');
+      matches.removeClass('faded').addClass('highlighted');
+      cy.animate({ fit: { eles: neighborhood, padding: 90 }, duration: 250 });
+    }
+
+    function scheduleViewportRefresh(refit) {
+      if (resizeTimer) {
+        clearTimeout(resizeTimer);
+      }
+      resizeTimer = setTimeout(() => {
+        syncViewportHeight();
+        cy.resize();
+        if (refit) {
+          fitGraph(64);
+        }
+      }, 80);
+    }
+
+    document.getElementById('fit-btn').addEventListener('click', () => fitGraph(64));
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      searchEl.value = '';
+      clearFocusState(false);
+      applyReferenceFilter('', false);
+      renderDefaultDetails();
+      cy.elements().unselect();
+      applyCompoundLayout(currentLayoutName, false);
+    });
+    document.getElementById('layout-btn').addEventListener('click', () => applyLayout(layoutSelectEl.value));
+    document.getElementById('png-btn').addEventListener('click', () => {
+      const png = cy.png({ full: true, bg: '#f7f5ee', scale: 2 });
+      const link = document.createElement('a');
+      link.href = png;
+      link.download = 'Global_Circuit.png';
+      link.click();
+    });
+    labelsBtn.addEventListener('click', () => {
+      edgeLabelsVisible = !edgeLabelsVisible;
+      updateEdgeLabels();
+    });
+    searchEl.addEventListener('input', (event) => applySearch(event.target.value));
+    focusIncomingBtn.addEventListener('click', () => {
+      focusMode = 'incoming';
+      updateFocusStatus();
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], true);
+        }
+      }
+    });
+    focusBothBtn.addEventListener('click', () => {
+      focusMode = 'both';
+      updateFocusStatus();
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], true);
+        }
+      }
+    });
+    focusOutgoingBtn.addEventListener('click', () => {
+      focusMode = 'outgoing';
+      updateFocusStatus();
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], true);
+        }
+      }
+    });
+    focusOneBtn.addEventListener('click', () => {
+      focusHops = 1;
+      updateFocusStatus();
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], true);
+        }
+      }
+    });
+    focusTwoBtn.addEventListener('click', () => {
+      focusHops = 2;
+      updateFocusStatus();
+      if (focusNodeId) {
+        const focusNode = cy.getElementById(focusNodeId);
+        if (focusNode && focusNode.length) {
+          applyNodeFocus(focusNode[0], true);
+        }
+      }
+    });
+    focusClearBtn.addEventListener('click', () => {
+      clearFocusState(false);
+      renderDefaultDetails();
+      cy.elements().unselect();
+    });
+    referenceClearBtn.addEventListener('click', () => {
+      applyReferenceFilter('', true);
+    });
+
+    detailEl.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+      const chip = event.target.closest('[data-node-id]');
+      if (!chip) {
+        return;
+      }
+      const targetId = chip.getAttribute('data-node-id');
+      if (!targetId) {
+        return;
+      }
+      const targetNode = cy.getElementById(targetId);
+      if (!targetNode || !targetNode.length) {
+        return;
+      }
+      cy.elements().unselect();
+      targetNode[0].select();
+      applyNodeFocus(targetNode[0], true);
+    });
+
+    referenceListEl.addEventListener('click', (event) => {
+      if (!(event.target instanceof Element)) {
+        return;
+      }
+      const button = event.target.closest('[data-ref-id]');
+      if (!button) {
+        return;
+      }
+      const refId = button.getAttribute('data-ref-id');
+      if (!refId) {
+        return;
+      }
+      applyReferenceFilter(refId, true);
+    });
+
+    cy.on('select', 'node', (event) => applyNodeFocus(event.target, true));
+    cy.on('select', 'edge', (event) => renderEdgeDetails(event.target));
+    cy.on('unselect', () => {
+      if (!cy.$(':selected').length) {
+        renderDefaultDetails();
+      }
+    });
+    cy.on('tap', (event) => {
+      if (event.target === cy) {
+        cy.elements().unselect();
+        clearFocusState(false);
+        renderDefaultDetails();
+      }
+    });
+
+    syncViewportHeight();
+    window.addEventListener('resize', () => scheduleViewportRefresh(true));
+    if (typeof ResizeObserver !== 'undefined') {
+      const resizeObserver = new ResizeObserver(() => scheduleViewportRefresh(true));
+      resizeObserver.observe(document.getElementById('cy'));
+    }
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) {
+        scheduleViewportRefresh(true);
+      }
+    });
+
+    renderStats();
+    renderNodeSuggestions();
+    renderDefaultDetails();
+    updateEdgeLabels();
+    updateFocusStatus();
+    updateReferenceFilterStatus();
+    applyCompoundLayout(currentLayoutName, false);
+  </script>
+</body>
+</html>

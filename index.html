@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Global Circuit Viewer</title>
+  <style>
+    :root {
+      --bg: #f7f5ee;
+      --panel: rgba(255, 252, 245, 0.96);
+      --ink: #1f2937;
+      --muted: #6b7280;
+      --line: #d6d3d1;
+      --accent: #0f766e;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: grid;
+      place-items: center;
+      padding: 24px;
+      font-family: "Iowan Old Style", "Palatino Linotype", "Book Antiqua", Palatino, serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(15, 118, 110, 0.12), transparent 28%),
+        radial-gradient(circle at bottom right, rgba(217, 119, 6, 0.10), transparent 26%),
+        var(--bg);
+    }
+    .card {
+      width: min(760px, 100%);
+      padding: 28px;
+      border-radius: 24px;
+      background: var(--panel);
+      border: 1px solid rgba(214, 211, 209, 0.95);
+      box-shadow: 0 18px 45px rgba(15, 23, 42, 0.10);
+    }
+    h1 { margin: 0 0 10px; font-size: 2rem; }
+    p { margin: 0; line-height: 1.6; }
+    .muted { color: var(--muted); }
+    .stats {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin: 18px 0 24px;
+    }
+    .chip {
+      border-radius: 999px;
+      padding: 8px 12px;
+      background: #f5f2ea;
+      border: 1px solid var(--line);
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-top: 24px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #0f766e;
+      border-radius: 999px;
+      padding: 12px 16px;
+      color: #fffdf8;
+      background: #0f766e;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .btn.secondary {
+      color: var(--ink);
+      background: #fffdf8;
+      border-color: #b9b2a8;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <h1>Global Circuit Viewer</h1>
+    <p class="muted">Interactive Cytoscape.js export of the curated neural circuit graph. Open the viewer below for touch-friendly pan, zoom, node focus, and reference-specific filtering.</p>
+    <div class="stats">
+      <span class="chip">25 papers</span>
+      <span class="chip">151 nodes</span>
+      <span class="chip">130 edges</span>
+    </div>
+    <div class="actions">
+      <a class="btn" href="Global_Circuit.cytoscape.html">Open Interactive Viewer</a>
+    </div>
+  </main>
+</body>
+</html>
